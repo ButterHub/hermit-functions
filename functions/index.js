@@ -1,11 +1,15 @@
 const functions = require('firebase-functions');
 const app = require('express')()
+const {firebaseAuthentication} = require('./util/firebaseAuthentication')
 
-const {registerUser, loginUser} = require('./handlers/users')
+// app.get('/test', test)
+
+const {registerUser, loginUser } = require('./handlers/users')
 app.post('/users', registerUser)
 app.post('/login', loginUser)
+// todo add auth middleware
 
-const {getAllDecisions, createDecision, firebaseAuthentication} = require('./handlers/decisions')
+const {getAllDecisions, createDecision} = require('./handlers/decisions')
 app.get('/decisions', getAllDecisions)
 app.post('/decisions', firebaseAuthentication, createDecision)
 

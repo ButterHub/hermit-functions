@@ -1,14 +1,16 @@
 const {db} = require('../util/admin')
 const {FieldValue} = require('firebase-admin').firestore
 const RegisteredEmailError = require('../errors/RegisteredEmailError')
-const {firebase} = require('../util/firebaseConfig')
+const {firebase} = require('../util/config')
+const { getDefaultProfilePhoto} = require('../util/unsplash')
+
 
 const isValidEmail = (email) => {
   const emailPattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return emailPattern.test(email)
 } 
 
-exports.registerUser = (req, res) => {
+exports.registerUser = async (req, res) => {
   let user;
   let errors = []
   const {email, name, password, passwordConfirm } = req.body
@@ -33,12 +35,14 @@ exports.registerUser = (req, res) => {
     }
   }).then(async userCredential => {
     const token = await userCredential.user.getIdToken()
+  const defaultProfileUri = await getDefaultProfilePhoto()
     const userId = userCredential.user.uid
     user = {
       token,
       name,
       email,
-      createTime: FieldValue.serverTimestamp()
+      createTime: FieldValue.serverTimestamp(),
+      profileUri: defaultProfileUri
     }
     return db.collection('users').doc(userId).set(user) // todo break this line, and check auth is reverted.
   })
