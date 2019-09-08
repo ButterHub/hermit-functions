@@ -1,4 +1,4 @@
-const {admin} = require('../util/admin');
+const {admin, db} = require('../util/admin');
 
 exports.firebaseAuthentication = (req, res, next) => {
   let token;
