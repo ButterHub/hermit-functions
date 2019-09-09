@@ -1,5 +1,4 @@
 const {db, admin} = require('../util/admin')
-const {FieldValue} = require('firebase-admin').firestore
 const RegisteredEmailError = require('../errors/RegisteredEmailError')
 const {firebase, firebaseConfig} = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
@@ -26,31 +25,36 @@ exports.registerUser = async (req, res) => {
   if (errors.length > 0) {
     return res.status(400).json(errors)
   }
+  // Check users collection in firestore
+  let userId;
   return db.collection('users').where('email', '==', email).get()
   .then(snapshot => {
     if (!snapshot.empty) {
-      return Promise.reject(new RegisteredEmailError(`The email ${email} is already used.`))
-    } else {
+      return Promise.reject(new RegisteredEmailError(`The email address is already in use by another account.`))
+    } else { // Below implicitly checks Firebase Authentication for email
       return firebase.auth().createUserWithEmailAndPassword(email, password)
     }
   }).then(async userCredential => {
-    const userId = userCredential.user.uid
+    userId = userCredential.user.uid
     const [token, defaultPictureUrl] = await Promise.all([userCredential.user.getIdToken(), getDefaultProfilePicture()])
     user = {
       token,
       name,
       email,
-      createTime: FieldValue.serverTimestamp(),
       pictureUrl: defaultPictureUrl
     }
-    return db.collection('users').doc(userId).set(user) // todo break this line, and check auth is reverted.
+    return db.collection('users').doc(userId).set(user)
   })
   .then(() => res.status(201).json(user))
-  .catch(error => {
+  .catch(async error => {
     console.log(error)
     if (error instanceof RegisteredEmailError) {
       console.log(error)
       return res.status(400).json({message: error.message})
+    }
+    if (error.code === 'auth/email-already-in-use') {
+      console.log(error)
+      return res.status(409).json({message: error.message})
     }
     return res.status(500).json({message: "Unable to register user."})
   })
@@ -72,8 +76,9 @@ exports.loginUser = (req, res) => {
 }
 
 exports.uploadProfilePicture = async (req, res) => {
-    // Currently saving file locally, then uploading to cloud storage
-    // See https://cloud.google.com/storage/docs/streaming to use streaming transfer, skipping temp files step
+  // Currently saving file locally, then uploading to cloud storage
+  // See https://cloud.google.com/storage/docs/streaming to use streaming transfer, skipping temp files step
+  // TODO to generify for banner photo too, send a 'target: profile or target: banner' body param.
   const path = require('path')
   const os = require('os')
   const fs = require('fs')
@@ -111,4 +116,28 @@ exports.uploadProfilePicture = async (req, res) => {
   busboy.end(req.rawBody) // Ending busboy WritableStream with final (& only) input, 
 } 
 
-// TODO create seperate function listening to cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
+// TODO create separate function listening to cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
+
+exports.addUserInformation = async (req, res) => {
+  // Use to add information seen on profiles to user documents in users collection
+  // Information includes externalProfiles, bannerPicture, headline, location, about
+  const {externalProfiles, bannerPicture, headline, location, about} = req.body
+  // validate the above
+  information = {}
+  if (!isEmpty(bannerPicture.trim())) {
+    information.externalProfiles = externalProfiles.trim()
+  }
+  if (!isEmpty(headline.trim())) {
+    information.headline = headline.trim()
+  }
+  if (!isEmpty(location.trim())) {
+    information.location = location.trim()
+  }
+  if (!isEmpty(about.trim())) {
+    information.about = about.trim()
+  }
+  
+
+  await db.doc(`/users/${req.user.user_id}`).update(information)
+  res.json({message: "user should go here"}) // TODO should return user?
+}
