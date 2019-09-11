@@ -33,23 +33,22 @@ exports.createDecision = (req, res) => {
 
 // TODO to test this endpoint works.
 exports.getDecision = (req, res) => {
-  let decisionData = {}
+  let decision = {}
   db.doc(`/decisions/${req.params.decisionId}`).get()
   .then(doc => {
-    if (!doc.exists()) {
+    if (!doc.exists) {
       return res.status(404).end()
     }
-    decisionData = doc.data()
-    decisionData.decisionId = doc.id
-
-    return db.collection('comments').where('decisionId', '==', req.params.decisionId).get()
+    decision = doc.data()
+    decision.decisionId = doc.id
+    return db.collection('comments').where('objectId', '==', req.params.decisionId).get()
   })
   .then(querySnapshot => {
-    decisionData.comments = []
+    decision.comments = []
     querySnapshot.forEach(doc => {
-      screamData.push(doc.data())
+      decision.comments.push(doc.data())
     })
-      return res.json({decisionData})
+      return res.json({decision})
   })
   .catch(error => {
     console.log(error)

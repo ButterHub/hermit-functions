@@ -118,6 +118,7 @@ exports.getCurrentUser = (req, res) => {
     })
   ])
   .then(([userCredentials, upvotesGiven, commentsGiven, decisions]) => {
+    userCredentials.userId = req.user.user_id
     return res.json({...userCredentials, upvotesGiven, commentsGiven, decisions})
   })
   .catch(error => {
