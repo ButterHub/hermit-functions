@@ -2,12 +2,12 @@ const functions = require('firebase-functions');
 const apiApp = require('express')()
 const {firebaseAuthentication} = require('./util/firebaseAuthentication')
 
-const {registerUser, loginUser, uploadProfilePicture } = require('./handlers/users')
+const {getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation } = require('./handlers/users')
 apiApp.post('/users', registerUser)
 apiApp.post('/user', firebaseAuthentication, addUserInformation)
 apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
-apiApp.get('/user', getCurrentUser)
+apiApp.get('/user', firebaseAuthentication, getCurrentUser)
 
 const {getAllDecisions, createDecision, getDecision} = require('./handlers/decisions')
 apiApp.get('/decisions', getAllDecisions)

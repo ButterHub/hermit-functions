@@ -27,6 +27,10 @@
         "objectId": ""
     },
     "users": {
-
+        "username": "",
+        "userId": "",
+        "email": "",
+        "token": "",
+        "pictureUrl": ""
     }
 }

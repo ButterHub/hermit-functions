@@ -1,5 +1,5 @@
 const {db, admin} = require('../util/admin')
-const RegisteredEmailError = require('../errors/RegisteredEmailError')
+const {RegisteredEmailError, RegisteredUsernameError } = require('../errors')
 const {firebase, firebaseConfig} = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
 
@@ -9,10 +9,11 @@ const isValidEmail = (email) => {
   return emailPattern.test(email)
 } 
 
+// TODO, what if the api doesn't send a required field? it just blows up currently...
 exports.registerUser = async (req, res) => {
   let user;
   let errors = []
-  const {email, name, password, passwordConfirm } = req.body
+  const {username, email, name, password, passwordConfirm } = req.body
   if (!isValidEmail(email)) {
     errors.push("Email is not valid.")
   }
@@ -25,22 +26,32 @@ exports.registerUser = async (req, res) => {
   if (errors.length > 0) {
     return res.status(400).json(errors)
   }
-  // Check users collection in firestore
+  // Check email and username already in collection
   let userId;
   return db.collection('users').where('email', '==', email).get()
   .then(snapshot => {
     if (!snapshot.empty) {
-      return Promise.reject(new RegisteredEmailError(`The email address is already in use by another account.`))
-    } else { // Below implicitly checks Firebase Authentication for email
-      return firebase.auth().createUserWithEmailAndPassword(email, password)
+      return Promise.reject(new RegisteredEmailError(`This email address is already in use.`))
+    } else {
+      return db.collection('users').where('username', '==', username).get()
     }
-  }).then(async userCredential => {
+  })
+  .then(snapshot => {
+      if (!snapshot.empty) {
+        return Promise.reject(new RegisteredUsernameError("This username is already in use."))
+      } else {
+        // Below implicitly checks Firebase Authentication for email
+        return firebase.auth().createUserWithEmailAndPassword(email, password)
+      }
+  })
+  .then(async userCredential => {
     userId = userCredential.user.uid
     const [token, defaultPictureUrl] = await Promise.all([userCredential.user.getIdToken(), getDefaultProfilePicture()])
     user = {
       token,
-      name,
+      username,
       email,
+      name,
       pictureUrl: defaultPictureUrl
     }
     return db.collection('users').doc(userId).set(user)
@@ -76,25 +87,41 @@ exports.loginUser = (req, res) => {
 }
 
 exports.getCurrentUser = (req, res) => {
-  let currentUser = {}
-  db.doc(`/users/${req.user.user_id}`).get()
-  .then(doc => {
-    if (doc.exists) {
-      currentUser = doc.data()
-      return db.collection('upvotes').where('userId', '==', req.user.user_id)
-    } else {
-      throw new Error("User doesn't exist.")
-    }
-  })
-  .then(querySnapshot => {
-    querySnapshot.forEach(doc => {
-      currentUser.upvotesGiven = doc.data()
+  Promise.all([
+    db.doc(`/users/${req.user.user_id}`).get()
+    .then(doc => {
+      return doc.data()
+    }),
+    db.collection('upvotes').where('userId', '==', req.user.user_id).get()
+    .then(querySnapshot => {
+      upvotesGiven = []
+      querySnapshot.forEach(doc => {
+        upvotesGiven.push(doc.data())
+      })
+      return upvotesGiven
+    }),
+    db.collection('comments').where('userId', '==', req.user.user_id).get()
+    .then(querySnapshot => {
+      commentsGiven = []
+      querySnapshot.forEach(doc => {
+        commentsGiven.push(doc.data())
+      })
+      return commentsGiven
+    }),
+    db.collection('decisions').where('userId', '==', req.user.user_id).get()
+    .then(querySnapshot => {
+      decisions = []
+      querySnapshot.forEach(doc => {
+        decisions.push(doc.data())
+      })
+      return decisions
     })
-    return res.json(currentUser)
+  ])
+  .then(([userCredentials, upvotesGiven, commentsGiven, decisions]) => {
+    return res.json({...userCredentials, upvotesGiven, commentsGiven, decisions})
   })
   .catch(error => {
-    console.error(error)
-    res.status(500)
+    return res.status(500).json({"message": error.code})
   })
 }
 
