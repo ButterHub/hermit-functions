@@ -31,27 +31,42 @@ exports.createDecision = (req, res) => {
   })
 }
 
-// TODO to test this endpoint works.
 exports.getDecision = (req, res) => {
-  let decision = {}
-  db.doc(`/decisions/${req.params.decisionId}`).get()
+  Promise.all([
+    db.doc(`/decisions/${req.params.decisionId}`).get()
   .then(doc => {
     if (!doc.exists) {
-      return res.status(404).end()
+      const error = new Error("Decision does not exist.")
+      error.code = 404
+      throw error
     }
-    decision = doc.data()
-    decision.decisionId = doc.id
-    return db.collection('comments').where('objectId', '==', req.params.decisionId).get()
-  })
-  .then(querySnapshot => {
-    decision.comments = []
-    querySnapshot.forEach(doc => {
-      decision.comments.push(doc.data())
+    return doc.data()
+  }),
+    db.collection('comments')
+    .orderBy('createTime', 'desc') // TODO add createTime to code/ docs
+    .where('objectId', '==', req.params.decisionId).get()
+    .then(querySnapshot => {
+      comments = []
+      querySnapshot.forEach(doc => {
+        comments.push(doc.data())
+      })
+      return comments
+    }),
+    db.collection('upvotes').where('objectId', '==', req.params.decisionId).get()
+    .then(querySnapshot => {
+      upvotes = []
+      querySnapshot.forEach(doc => {
+        upvotes.push(doc.data())
+      })
+      return upvotes
     })
-      return res.json({decision})
+  ])
+  .then(([decision, comments, upvotes]) => {
+    return res.json({...decision, comments, upvotes})
   })
   .catch(error => {
     console.log(error)
-    return res.status(500).json({error: err.code})
+    const { message } = error
+    return res.status(error.code).json({message})
   })
 }
