@@ -1,0 +1,32 @@
+{
+    "decisions": {
+        "userId": "",
+        "importance": 0,
+        "visibility": "",
+        "advisors": [],
+        "status": "",
+        "headline": "", 
+        "context": "",
+        "conclusion": "",
+        "files": {}
+    },
+    "decisionComponents": {
+        "userId": "",
+        "headline": "",
+        "summary": "",
+        "deadline": new Date();
+    },
+    "comments": {
+        "userId": "",
+        "objectId": "",
+        // Note objectId refers to either comments, decisions, decisionComponents, and maybe more later on!
+        "body": ""
+    },
+    "upvotes": {
+        "userId": "",
+        "objectId": ""
+    },
+    "users": {
+
+    }
+}
