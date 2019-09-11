@@ -75,6 +75,29 @@ exports.loginUser = (req, res) => {
   })
 }
 
+exports.getCurrentUser = (req, res) => {
+  let currentUser = {}
+  db.doc(`/users/${req.user.user_id}`).get()
+  .then(doc => {
+    if (doc.exists) {
+      currentUser = doc.data()
+      return db.collection('upvotes').where('userId', '==', req.user.user_id)
+    } else {
+      throw new Error("User doesn't exist.")
+    }
+  })
+  .then(querySnapshot => {
+    querySnapshot.forEach(doc => {
+      currentUser.upvotesGiven = doc.data()
+    })
+    return res.json(currentUser)
+  })
+  .catch(error => {
+    console.error(error)
+    res.status(500)
+  })
+}
+
 exports.uploadProfilePicture = async (req, res) => {
   // Currently saving file locally, then uploading to cloud storage
   // See https://cloud.google.com/storage/docs/streaming to use streaming transfer, skipping temp files step
@@ -122,7 +145,7 @@ exports.addUserInformation = async (req, res) => {
   // Use to add information seen on profiles to user documents in users collection
   // Information includes externalProfiles, bannerPicture, headline, location, about
   const {externalProfiles, bannerPicture, headline, location, about} = req.body
-  // validate the above
+  // TODO validate the above
   information = {}
   if (!isEmpty(bannerPicture.trim())) {
     information.externalProfiles = externalProfiles.trim()

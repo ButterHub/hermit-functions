@@ -3,14 +3,19 @@ const apiApp = require('express')()
 const {firebaseAuthentication} = require('./util/firebaseAuthentication')
 
 const {registerUser, loginUser, uploadProfilePicture } = require('./handlers/users')
-
 apiApp.post('/users', registerUser)
 apiApp.post('/user', firebaseAuthentication, addUserInformation)
 apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
+apiApp.get('/user', getCurrentUser)
 
-const {getAllDecisions, createDecision} = require('./handlers/decisions')
+const {getAllDecisions, createDecision, getDecision} = require('./handlers/decisions')
 apiApp.get('/decisions', getAllDecisions)
 apiApp.post('/decisions', firebaseAuthentication, createDecision)
+apiApp.get('/decisions/:decisionId', getDecision)
+// TODO below route need author permissions.
+// apiApp.delete('decisions/:decisionId', deleteDecision)
+// apiApp.post('/decisions/:decisionId/upvote', upvoteDecision)
+// apiApp.post('decisions/:decisionId/comment', commentDecision)
 
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)
