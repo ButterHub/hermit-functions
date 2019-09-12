@@ -20,7 +20,9 @@ exports.firebaseAuthentication = (req, res, next) => {
     if (!doc.exists) {
       throw new Error("User does not exist.")
     }
-    req.user.name = doc.data().name
+    const docData = doc.data()
+    req.user.name = docData.name
+    req.user.pictureUrl = docData.pictureUrl
     return next()
   })
   .catch(error => {

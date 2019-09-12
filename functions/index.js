@@ -9,13 +9,14 @@ apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
 apiApp.get('/user', firebaseAuthentication, getCurrentUser)
 
-const {getAllDecisions, createDecision, getDecision} = require('./handlers/decisions')
+const {getAllDecisions, createDecision, getDecision, createComment} = require('./handlers/decisions')
 apiApp.get('/decisions', getAllDecisions)
 apiApp.post('/decisions', firebaseAuthentication, createDecision)
 apiApp.get('/decisions/:decisionId', getDecision)
 // TODO below route need author permissions.
 // apiApp.delete('decisions/:decisionId', deleteDecision)
 // apiApp.post('/decisions/:decisionId/upvote', upvoteDecision)
-// apiApp.post('decisions/:decisionId/comment', commentDecision)
+
+apiApp.post('/comments/:objectId', firebaseAuthentication, createComment)
 
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)

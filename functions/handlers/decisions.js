@@ -70,3 +70,26 @@ exports.getDecision = (req, res) => {
     return res.status(error.code).json({message})
   })
 }
+
+exports.createComment = (req, res) => {
+  if (req.body.body.trim() === "") return res.status(400).json({message: "Comment cannot be empty"})
+  const comment = {
+    userId: req.user.user_id,
+    objectId: req.params.objectId,
+    userPictureUrl: req.user.pictureUrl,
+    body: req.body.body,
+  }
+  // TODO generalise, not just for decisions, but for all objects commentable. also move out of decisions
+  return db.doc(`/decisions/${req.params.objectId}`).get()
+  .then(doc => {
+    if (!doc.exists) res.status(404).json({message: "Target object to be commented does not exist."})
+    return db.collection('comments').add(comment)
+  })
+  .then(() => {
+    return res.json(comment)
+  })
+  .catch(error => {
+    console.log(error)
+    res.status(500).end()
+  })
+}
