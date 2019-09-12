@@ -9,14 +9,18 @@ apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
 apiApp.get('/user', firebaseAuthentication, getCurrentUser)
 
-const {getAllDecisions, createDecision, getDecision, createComment} = require('./handlers/decisions')
+const {getAllDecisions, createDecision, getDecision, deleteDecision} = require('./handlers/decisions')
+apiApp.get('/decisions/:decisionId', getDecision)
 apiApp.get('/decisions', getAllDecisions)
 apiApp.post('/decisions', firebaseAuthentication, createDecision)
-apiApp.get('/decisions/:decisionId', getDecision)
-// TODO below route need author permissions.
-// apiApp.delete('decisions/:decisionId', deleteDecision)
-// apiApp.post('/decisions/:decisionId/upvote', upvoteDecision)
+apiApp.delete('/decisions/:decisionId', firebaseAuthentication, deleteDecision)
 
+const { createComment, deleteComment } = require('./handlers/comments')
 apiApp.post('/comments/:objectId', firebaseAuthentication, createComment)
+apiApp.delete('/comments/:commentId', firebaseAuthentication, deleteComment)
+
+const {createVote, deleteVote} = require('./handlers/votes')
+apiApp.put('/votes/:objectId/up', firebaseAuthentication, createVote)
+apiApp.delete('/votes/:objectId/down', firebaseAuthentication, deleteVote)
 
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)

@@ -76,7 +76,7 @@ exports.loginUser = (req, res) => {
   firebase.auth().signInWithEmailAndPassword(email, password)
   .then(userCredential => {
     return userCredential.user.getIdToken()
-  })
+  }) // TODO Add token to user db.
   .then(token => {
     return res.json({token})
   })
