@@ -19,8 +19,9 @@ const { createComment, deleteComment } = require('./handlers/comments')
 apiApp.post('/comments/:objectId', firebaseAuthentication, createComment)
 apiApp.delete('/comments/:commentId', firebaseAuthentication, deleteComment)
 
-const {createVote, deleteVote} = require('./handlers/votes')
-apiApp.put('/votes/:objectId/up', firebaseAuthentication, createVote)
-apiApp.delete('/votes/:objectId/down', firebaseAuthentication, deleteVote)
+const {upVote, deleteVote, downVote} = require('./handlers/votes')
+apiApp.put('/votes/:objectId/up', firebaseAuthentication, upVote)
+apiApp.put('votes/:objectId/down', firebaseAuthentication, downVote)
+apiApp.delete('/votes/:objectId', firebaseAuthentication, deleteVote)
 
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)

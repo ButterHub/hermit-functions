@@ -18,13 +18,17 @@ exports.getAllDecisions = (req, res) => {
 }
 
 exports.createDecision = (req, res) => {
-  const {title, context} = req.body
+  const {context, importance, status, headline, advisors, conclusion} = req.body
   const {user} = req
   const decision = {
-    context, user, title,
+    context, user, importance, status, headline, advisors, conclusion,
+    upvotes: 0,
+    downvotes: 0,
+    files: [],
     createTime: new Date().toISOString()
   }
   db.collection('decisions').add(decision).then(doc => {
+    decision.decisionId = doc.id
     return res.json(decision)
   }).catch(err => {
     return res.status(500).json({message: "Unable to create user."}, err)
