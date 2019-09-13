@@ -1,13 +1,34 @@
 const { db }= require('../util/admin')
 
-exports.createNotificationOnUpvote = (snap, context) => {
-  const vote = snap.data()
-  // Get 
-  if (vote.up === true) {
+exports.createNotificationOnDecisionUpvote = async (snap, context) => {
+  try {
+    const vote = snap.data()
+    const decisionDoc = await db.collection('decisions').doc(vote.decisionId).get()
+    if (!decisionDoc.exists) {
+      const error = new Error("Decision does not exist.")
+      error.code = 400
+      throw error
+    }
+    if (vote.up === true) {
+      
+    }
 
+  } catch(error) {
+    return console.error(error)
   }
 }
 
-// TODO CREATE helper function, to get back the document from correct collection, based on objectId
+exports.deleteNotificationOnDeleteDecisionUpvote = (snap, context) => {
 
-// To consider? Move from upvoting and commenting on objectIds?
+}
+
+exports.createNotificationOnDecisionComponentComment = (snap, context) => {
+  
+}
+
+exports.deleteNotificationOnDeleteDecisionComponentComment = (snap, context) => {
+  
+}
+
+// array of notifications to be pulled by client (stored in user)
+// EVENT DRIVEN: send notifications/ or push to queue for user to receive latest notifications

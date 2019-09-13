@@ -57,13 +57,11 @@ exports.registerUser = async (req, res) => {
     })
     .then(() => res.status(201).json(user))
     .catch(async error => {
-      console.log(error)
+      console.error(error)
       if (error instanceof RegisteredEmailError) {
-        console.log(error)
         return res.status(400).json({ message: error.message })
       }
       if (error.code === 'auth/email-already-in-use') {
-        console.log(error)
         return res.status(409).json({ message: error.message })
       }
       return res.status(500).json({ message: 'Unable to register user.' })
@@ -80,7 +78,7 @@ exports.loginUser = (req, res) => {
       return res.json({ token })
     })
     .catch(err => {
-      console.log(err)
+      console.error(err)
       return res.status(500).json({ message: 'Please check your email and password.' })
     })
 }
@@ -143,7 +141,6 @@ exports.uploadProfilePicture = async (req, res) => {
     localFileName = `${Math.round(Math.random() * 1000000000)}-${filename}`
     localFilePath = path.join(os.tmpdir(), localFileName)
     file.pipe(fs.createWriteStream(localFilePath))
-    console.log(`File ${fieldname} filename: ${filename} encoding: ${encoding} mimetype: ${mimetype} localFilePath: ${localFilePath}`)
   })
 
   busboy.on('finish', async () => {

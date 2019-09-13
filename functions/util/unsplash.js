@@ -11,7 +11,7 @@ const instance = axios.create({
 
 const getDefaultProfilePicture = async () => {
   return await getRandomPictureFromUnsplash().then(pictureUrl => pictureUrl).catch(error => {
-    console.log(error)
+    console.error(error)
     return "https://images.unsplash.com/photo-1533518463841-d62e1fc91373?ixlib=rb-1.2.1&q=80&fm=jpg&crop=entropy&cs=tinysrgb&w=400&fit=max"
   })
 }

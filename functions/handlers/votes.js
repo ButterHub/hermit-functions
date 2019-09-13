@@ -1,15 +1,15 @@
 const { db } = require('../util/admin')
 
-exports.upVote = (req, res) => {
-  const decision = db.collection('decisions').doc(req.params.objectId)
-  const vote = { objectId: req.params.objectId, userId: req.user.user_id, up: true }
-  db.collection('votes')
-    .where('objectId', '==', req.params.objectId)
+exports.upvoteDecision = (req, res) => {
+  const decision = db.collection('decisions').doc(req.params.decisionId)
+  const vote = { decisionId: req.params.decisionId, userId: req.user.user_id, up: true }
+  db.collection('decisionVotes')
+    .where('decisionId', '==', req.params.decisionId)
     .where('userId', '==', req.user.user_id)
     .get()
     .then(querySnapshot => {
       if (!querySnapshot.empty) {
-        const error = new Error('User has already upvoted object.')
+        const error = new Error('User has already upvoted decision.')
         error.code = 400
         throw error
       }
@@ -19,59 +19,77 @@ exports.upVote = (req, res) => {
       return decision.get()
     })
     .then(doc => {
-      if (doc.exists) {
-        return decision.update({ upvotes: doc.data().upvotes + 1 })
+      if (!doc.exists) {
+        const error = new Error("Decision does not exist.")
+        error.code = 400
+        throw error
       }
-      return null
+      return decision.update({ upvotes: doc.data().upvotes + 1 })
     })
     .then(() => {
-      return db.collection('votes').add(vote)
+      return db.collection('decisionVotes').add(vote)
     })
     .then(doc => {
       vote.voteId = doc.id
       return res.status(200).json(vote)
     })
     .catch(error => {
-      console.log(error)
+      console.error(error)
       res.status(error.code).json({ message: error.message })
     })
 }
 
-exports.deleteVote = (req, res) => {
-  const decision = db.collection('decisions').doc(req.params.objectId)
-  db.collection('votes')
-    .where('objectId', '==', req.params.objectId)
+exports.deleteVoteOnDecision = (req, res) => {
+  const decision = db.collection('decisions').doc(req.params.decisionId)
+  db.collection('decisionVotes')
+    .where('decisionId', '==', req.params.decisionId)
     .where('userId', '==', req.user.user_id)
     .get()
     .then(querySnapshot => {
       if (querySnapshot.empty) {
-        const error = new Error('User has not voted on object.')
+        const error = new Error('User has not voted on decision.')
         error.code = 400
         throw error
       }
       querySnapshot.forEach(doc => {
-        return db.collection('votes').doc(doc.id).delete()
+        return db.collection('decisionVotes').doc(doc.id).delete()
       })
       return decision.get()
     })
     .then(doc => {
-      if (doc.exists) {
-        return decision.update({ upvotes: doc.data().upvotes - 1 })
+      if (!doc.exists) {
+        const error = new Error("Decision does not exist.")
+        error.code = 400
+        throw error  
       }
-      return null
+      return decision.update({ upvotes: doc.data().upvotes - 1 })
     })
     .then(() => {
       return res.status(200).end()
     })
     .catch(error => {
-      console.log(error)
+      console.error(error)
       res.status(500).end()
     })
 }
 
-// TODO create a function that listens on the votes collection
-
 // TODO Implement downvote
-exports.downVote = (req, res) => {
-  res.status(501)
+exports.downVoteDecision = (req, res) => {
+  res.status(501).end()
 }
+
+// TODO implement
+exports.upvoteDecisionComponent = (req, res) => {
+  res.status(501).end()
+}
+
+// TODO implement
+exports.deleteVoteOnDecisionComponent = (req, res) => {
+  res.status(501).end()
+}
+
+// TODO implement
+exports.downVoteDecisionComponent = (req, res) => {
+  res.status(501).end()
+}
+

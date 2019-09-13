@@ -14,7 +14,10 @@ exports.getAllDecisions = (req, res) => {
     })
     return res.json(decisions)
   })
-  .catch((err) => console.log(err))
+  .catch((err) => {
+    console.error(err)
+    return res.status(500).end()
+  })
 }
 
 exports.createDecision = (req, res) => {
@@ -25,7 +28,8 @@ exports.createDecision = (req, res) => {
     upvotes: 0,
     downvotes: 0,
     files: [],
-    createTime: new Date().toISOString()
+    createTime: new Date().toISOString(),
+    watchers: []
   }
   db.collection('decisions').add(decision).then(doc => {
     decision.decisionId = doc.id
@@ -52,7 +56,7 @@ exports.deleteDecision = (req, res) => {
   })
   .then(() => res.status(200).end())
   .catch(error => {
-    console.log(`ERROR is ${error}`)
+    console.error(error)
     res.status(error.code).json({message: error.message})
   })
 }
@@ -69,10 +73,10 @@ exports.getDecision = (req, res) => {
     return doc.data()
   }),
     db.collection('comments')
-    .orderBy('createTime', 'desc') // TODO add createTime to code/ docs
+    .orderBy('createTime', 'desc')
     .where('objectId', '==', req.params.decisionId).get()
     .then(querySnapshot => {
-      comments = []
+      const comments = []
       querySnapshot.forEach(doc => {
         comments.push(doc.data())
       })
@@ -80,7 +84,7 @@ exports.getDecision = (req, res) => {
     }),
     db.collection('upvotes').where('objectId', '==', req.params.decisionId).get()
     .then(querySnapshot => {
-      upvotes = []
+      const upvotes = []
       querySnapshot.forEach(doc => {
         upvotes.push(doc.data())
       })
@@ -91,7 +95,7 @@ exports.getDecision = (req, res) => {
     return res.json({...decision, comments, upvotes})
   })
   .catch(error => {
-    console.log(error)
+    console.error(error)
     return res.status(error.code).json({ message: error.message})
   })
 }
