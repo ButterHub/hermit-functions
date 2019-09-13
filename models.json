@@ -8,10 +8,13 @@
         "headline": "", 
         "context": "",
         "conclusion": "",
-        "files": {}
+        "files": {},
+        "watchers": [],
+        "upvotes": 0,
+        "downvotes": 0
     },
     "decisionComponents": {
-        "userId": "",
+        "decisionId": "",
         "headline": "",
         "summary": "",
         "deadline": new Date();
@@ -28,10 +31,18 @@
         "score": ""
     },
     "users": {
-        "username": "",
         "userId": "",
         "email": "",
         "token": "",
         "pictureUrl": ""
+    },
+    "notifications": {
+        "userId": "",
+        "read": false,
+        "recipientUserId": "",
+        "senderUserId": "",
+        "type": "", // Comment or Upvote,
+        "decisionId": "",
+        "createTime": ""
     }
 }

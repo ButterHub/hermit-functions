@@ -55,7 +55,10 @@ exports.registerUser = async (req, res) => {
       }
       return db.collection('users').doc(userId).set(user)
     })
-    .then(() => res.status(201).json(user))
+    .then(() => {
+      user.id = userId
+      return res.status(201).json(user)
+    })
     .catch(async error => {
       console.error(error)
       if (error instanceof RegisteredEmailError) {
@@ -89,13 +92,13 @@ exports.getCurrentUser = (req, res) => {
       .then(doc => {
         return doc.data()
       }),
-    db.collection('upvotes').where('userId', '==', req.user.user_id).get()
+    db.collection('votes').where('userId', '==', req.user.user_id).get()
       .then(querySnapshot => {
-        const upvotesGiven = []
+        const authoredUpvotes = []
         querySnapshot.forEach(doc => {
-          upvotesGiven.push(doc.data())
+          authoredUpvotes.push(doc.data())
         })
-        return upvotesGiven
+        return authoredUpvotes
       }),
     db.collection('comments').where('userId', '==', req.user.user_id).get()
       .then(querySnapshot => {
@@ -112,13 +115,24 @@ exports.getCurrentUser = (req, res) => {
           decisions.push(doc.data())
         })
         return decisions
+      }),
+    db.collection('notifications').where('recipientUserId', '==', req.user.user_id).orderBy('createTime').limit(10).get()
+    .then(querySnapshot => {
+      const notifications = []
+      querySnapshot.forEach(doc => {
+        const notification = doc.data()
+        notification.notificationId = doc.id
+        notifications.push(notification)
       })
+      return notifications
+    })
   ])
-    .then(([userCredentials, upvotesGiven, commentsGiven, decisions]) => {
+    .then(([userCredentials, authoredUpvotes, commentsGiven, decisions, notifications]) => {
       userCredentials.userId = req.user.user_id
-      return res.json({ ...userCredentials, upvotesGiven, commentsGiven, decisions })
+      return res.json({ ...userCredentials, authoredUpvotes, commentsGiven, decisions, notifications })
     })
     .catch(error => {
+      console.log(error)
       return res.status(500).json({ message: error.code })
     })
 }
@@ -186,4 +200,62 @@ exports.addUserInformation = async (req, res) => {
 
   await db.doc(`/users/${req.user.user_id}`).update(information)
   res.json({ message: 'user should go here' }) // TODO should return user?
+}
+
+exports.getUser = async (req, res) => {
+  try {
+    // TODO extract common promise.all code
+    const [userWithPrivateDetails, authoredUpvotes, comments, decisions, notifications] = await Promise.all([
+      db.collection('users').doc(req.params.userId).get()
+        .then(doc => {
+          if (!user.exists) {
+            const error = new Error("User does not exist.")
+            error.code = 400
+            throw error
+          }
+          return doc.data()
+        }),
+      db.collection('votes').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const authoredUpvotes = []
+          querySnapshot.forEach(doc => {
+            authoredUpvotes.push(doc.data())
+          })
+          return authoredUpvotes
+        }),
+      db.collection('comments').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const comments = []
+          querySnapshot.forEach(doc => {
+            comments.push(doc.data())
+          })
+          return comments
+        }),
+      db.collection('decisions').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const decisions = []
+          querySnapshot.forEach(doc => {
+            decisions.push(doc.data())
+          })
+          return decisions
+        }),
+      db.collection('notifications').where('recipientUserId', '==', req.user.user_id).orderBy('createTime').limit(10).get()
+      .then(querySnapshot => {
+        const notifications = []
+        querySnapshot.forEach(doc => {
+          const notification = doc.data()
+          notification.notificationId = doc.id
+          notifications.push(notification)
+        })
+        return notifications
+      })
+    ])
+    const { pictureUrl } = userWithPrivateDetails
+      const user = {pictureUrl, authoredUpvotes, comments, decisions, notifications, userId: req.params.userId}
+      return res.status(200).json(user)
+  } catch(error) {
+    console.error(error)
+    res.status(error.code).json({message: error.message})
+  }
+
 }

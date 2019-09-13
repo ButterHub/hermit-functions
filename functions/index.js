@@ -3,12 +3,16 @@ const apiApp = require('express')()
 const { firebaseAuthentication } = require('./util/firebaseAuthentication')
 
 //USERS
-const { getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation } = require('./handlers/users')
+const { getUser, getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation } = require('./handlers/users')
 apiApp.post('/users', registerUser)
 apiApp.post('/user', firebaseAuthentication, addUserInformation)
 apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
 apiApp.get('/user', firebaseAuthentication, getCurrentUser)
+apiApp.get('/users/:userId', getUser)
+
+const {markNotificationAsRead} = require('./handlers/notifications')
+apiApp.put('/notifications/:notificationId', firebaseAuthentication, markNotificationAsRead)
 
 // DECISIONS
 const { getAllDecisions, createDecision, getDecision, deleteDecision } = require('./handlers/decisions')
