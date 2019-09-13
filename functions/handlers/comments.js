@@ -9,7 +9,8 @@ exports.createComment = (req, res) => {
     body: req.body.body
   }
   db.collection('comments').add(comment)
-    .then(() => {
+    .then(doc => {
+      comment.id = doc.id
       return res.json(comment)
     })
     .catch(error => {

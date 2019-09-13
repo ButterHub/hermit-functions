@@ -2,7 +2,7 @@ const { db } = require('../util/admin')
 
 exports.upVote = (req, res) => {
   const decision = db.collection('decisions').doc(req.params.objectId)
-  const vote = { objectId: req.params.objectId, userId: req.user.user_id }
+  const vote = { objectId: req.params.objectId, userId: req.user.user_id, up: true }
   db.collection('votes')
     .where('objectId', '==', req.params.objectId)
     .where('userId', '==', req.user.user_id)

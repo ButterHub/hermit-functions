@@ -25,3 +25,7 @@ apiApp.put('votes/:objectId/down', firebaseAuthentication, downVote)
 apiApp.delete('/votes/:objectId', firebaseAuthentication, deleteVote)
 
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)
+
+const { createNotificationOnUpvote } = require('./handlers/notifications')
+exports.upvoteNotifications = functions.region('europe-west2').firestore.document('votes/{id}')
+.onCreate(createNotificationOnUpvote)
