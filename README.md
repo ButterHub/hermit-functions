@@ -20,6 +20,7 @@ Serverless functions for Hermit, hosted on firebase.
    2. Cloud Storage
    3. Cloud Functions
 2. [Unsplash API](https://unsplash.com/developers)
+3. [GCP Console](https://console.cloud.google.com/) 
 
 # Future challenges
 1. Supporting decision comments: Renaming comments collection without losing data or uptime, when supporting decision comments alongside decision component comments
