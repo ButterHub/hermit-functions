@@ -2,11 +2,10 @@
 Serverless functions for Hermit, hosted on firebase. 
 
 # Urgent tasks
-1. Finish notification handlers
-2. Test all endpoints
-3. Update models.json
-4. Get hermit-prod firebase environment setup
-5. Go through all #TODO
+1. Test all endpoints
+2. Update models.json
+3. Get hermit-prod firebase environment setup
+4. Go through all #TODO
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.

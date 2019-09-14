@@ -52,10 +52,12 @@ exports.sendFirebaseMessagesOnNewNotification = (snap, context) => {
   return console.error('Not implemented.', snap, context)
 }
 
+// TODO implement
 exports.createNotificationOnDecisionComponentComment = (snap, context) => {
   return console.error('Not implemented.', snap, context)  
 }
 
+// TODO implement
 exports.deleteNotificationOnDeleteDecisionComponentComment = (snap, context) => {
   return console.error('Not implemented.'), snap, context
 }
