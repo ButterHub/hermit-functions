@@ -2,11 +2,13 @@
 Serverless functions for Hermit, hosted on firebase. 
 
 # Tasks
-1. Test all endpoints
-2. Validation of request bodies
-3. Update models.json
-4. Get hermit-prod firebase environment setup
-5. Implement delete account, delete decision, delete comment, delete decisionComponent
+1. Refactor
+2. Test all endpoints
+3. Validation of request bodies
+4. Update models.json
+5. Get hermit-prod firebase environment setup
+6. Implement delete account, delete decision, delete comment, delete decisionComponent
+7. Fix eslint warning: https://eslint.org/docs/rules/require-atomic-updates
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
