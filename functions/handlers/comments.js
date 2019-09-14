@@ -12,7 +12,7 @@ exports.createComment = async (req, res) => {
     }
     const decisionComponentDoc = await db.collection('decisionComponents').doc(req.params.decisionComponentId).get()
     if (!decisionComponentDoc.exists) {
-      const error = new Error("Decision component does not exist.")
+      const error = new Error('Decision component does not exist.')
       error.code = 400
       throw error
     }
@@ -22,8 +22,7 @@ exports.createComment = async (req, res) => {
     const commentDoc = await db.collection('comments').add(comment)
     comment.id = commentDoc.id
     return res.json(comment)
-  }
-  catch(error) {
+  } catch (error) {
     console.error(error)
     return res.status(error.code).json({ message: 'Unable to create comment.' })
   }

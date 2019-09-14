@@ -1,6 +1,6 @@
 const { db, admin } = require('../util/admin')
 const { RegisteredEmailError, RegisteredUsernameError } = require('../errors')
-const { firebase, firebaseConfig } = require('../util/config')
+const { firebase } = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
 
 const isValidEmail = (email) => {
@@ -71,13 +71,13 @@ exports.loginUser = async (req, res) => {
     const userCredentials = await firebase.auth().signInWithEmailAndPassword(email, password)
     const token = await userCredentials.user.getIdToken()
     await userCollection.where('email', '==', email).limit(1).get()
-        .then(querySnapshot => {
-          return querySnapshot.docs[0].id
-        })
-        .then(username => userCollection.doc(username).update({token}))
-        
-    return await res.json({token})
-  } catch(error) {
+      .then(querySnapshot => {
+        return querySnapshot.docs[0].id
+      })
+      .then(username => userCollection.doc(username).update({ token }))
+
+    return await res.json({ token })
+  } catch (error) {
     console.error(error)
     return res.status(500).json({ message: 'Please check your email and password.' })
   }
@@ -114,23 +114,23 @@ exports.getCurrentUser = (req, res) => {
         return decisions
       }),
     db.collection('notifications').where('recipientUsername', '==', req.user.username).orderBy('createTime').limit(10).get()
-    .then(querySnapshot => {
-      const notifications = []
-      querySnapshot.forEach(doc => {
-        const notification = doc.data()
-        notification.notificationId = doc.id
-        notifications.push(notification)
+      .then(querySnapshot => {
+        const notifications = []
+        querySnapshot.forEach(doc => {
+          const notification = doc.data()
+          notification.notificationId = doc.id
+          notifications.push(notification)
+        })
+        return notifications
+      }),
+    db.collection('decisions').where('watchers', 'array-contains', req.user.username).get()
+      .then(querySnapshot => {
+        const watchedDecisions = []
+        querySnapshot.forEach(doc => {
+          watchedDecisions.push(doc.data())
+        })
+        return watchedDecisions
       })
-      return notifications
-    }),
-    db.collection('decisions').where('watchers','array-contains', req.user.username).get()
-    .then(querySnapshot => {
-      const watchedDecisions = []
-      querySnapshot.forEach(doc => {
-        watchedDecisions.push(doc.data())
-      })
-      return watchedDecisions
-    })
   ])
     .then(([userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions]) => {
       return res.json({ ...userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
@@ -148,7 +148,7 @@ exports.getUser = async (req, res) => {
       db.collection('users').doc(req.params.username).get()
         .then(userDoc => {
           if (!userDoc.exists) {
-            const error = new Error("User does not exist.")
+            const error = new Error('User does not exist.')
             error.code = 400
             throw error
           }
@@ -179,19 +179,18 @@ exports.getUser = async (req, res) => {
           return decisions
         })
     ])
-    .catch(error => {
-      console.error(error)
-      const publicError = new Error("Server is struggling with its database queries.")
-      throw publicError
-    })
+      .catch(error => {
+        console.error(error)
+        const publicError = new Error('Server is struggling with its database queries.')
+        throw publicError
+      })
     const { pictureUrl } = userWithPrivateDetails
-      const user = {pictureUrl, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions}
-      return res.status(200).json(user)
-  } catch(error) {
+    const user = { pictureUrl, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions }
+    return res.status(200).json(user)
+  } catch (error) {
     console.error(error)
-    res.status(error.code || 500).json({message: error.message})
+    res.status(error.code || 500).json({ message: error.message })
   }
-
 }
 
 exports.uploadProfilePicture = async (req, res) => {
@@ -210,7 +209,7 @@ exports.uploadProfilePicture = async (req, res) => {
       return res.status(400).json({ message: 'Only .png and .jpg supported' })
     }
     const format = filename.split('.')[filename.split('.').length - 1]
-    localFileName = req.user.username + "." + format
+    localFileName = req.user.username + '.' + format
     localFilePath = path.join(os.tmpdir(), localFileName)
     file.pipe(fs.createWriteStream(localFilePath))
   })
@@ -226,13 +225,13 @@ exports.uploadProfilePicture = async (req, res) => {
     return res.json({ pictureUrl })
   })
   // Ending (and more importantly, starting) busboy WritableStream with final (& only) input,
-  busboy.end(req.rawBody) 
+  busboy.end(req.rawBody)
 }
 
 // TODO create separate function trigger: cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
 
 exports.addUserInformation = async (req, res) => {
-  const SUPPORTED_EXTERNAL_PROFILES = ["linkedin", "facebook"]
+  const SUPPORTED_EXTERNAL_PROFILES = ['linkedin', 'facebook']
 
   const { externalProfiles, bannerPicture, headline, location, about } = req.body
   const information = {}
@@ -248,7 +247,7 @@ exports.addUserInformation = async (req, res) => {
       }
       return parsedExternalProfiles
     }
-  // TODO validate below
+    // TODO validate below
     information.externalProfiles = parseExternalProfiles(externalProfiles)
     if (bannerPicture && bannerPicture.trim() !== '') {
       information.bannerPicture = bannerPicture.trim()
@@ -268,9 +267,9 @@ exports.addUserInformation = async (req, res) => {
     } else {
       return await res.status(400).end()
     }
-  } catch(error) {
+  } catch (error) {
     console.error(error)
-    return res.status(error.code || 500).json({message: error.message})
+    return res.status(error.code || 500).json({ message: error.message })
   }
 }
 
@@ -278,20 +277,20 @@ exports.userDetailsChange = change => {
   if (change.before.data().pictureUrl !== change.after.data().pictureUrl) {
     const batch = db.batch()
     return Promise.all([
-        db.collection('decisions').where('author.username', '==', change.before.id).get()
+      db.collection('decisions').where('author.username', '==', change.before.id).get()
         .then(authoredDecisionsSnapshot => {
           authoredDecisionsSnapshot.forEach(doc => {
-            batch.update(db.collection('decisions').doc(doc.id), {"author.pictureUrl": change.after.data().pictureUrl})
+            batch.update(db.collection('decisions').doc(doc.id), { 'author.pictureUrl': change.after.data().pictureUrl })
           })
         }),
-          db.collection('comments').where('author.username', '==', change.before.id).get()
-          .then(authoredDecisionsSnapshot => {
-            authoredDecisionsSnapshot.forEach(doc => {
-              batch.update(db.collection('comments').doc(doc.id), {"author.pictureUrl": change.after.data().pictureUrl})
-            })
+      db.collection('comments').where('author.username', '==', change.before.id).get()
+        .then(authoredDecisionsSnapshot => {
+          authoredDecisionsSnapshot.forEach(doc => {
+            batch.update(db.collection('comments').doc(doc.id), { 'author.pictureUrl': change.after.data().pictureUrl })
           })
-      ]).then(() => batch.commit())
+        })
+    ]).then(() => batch.commit())
   } else {
-    return "pictureUrl was not changed."
+    return 'pictureUrl was not changed.'
   }
 }

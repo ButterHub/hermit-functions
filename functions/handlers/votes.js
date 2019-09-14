@@ -2,12 +2,12 @@ const { db } = require('../util/admin')
 
 exports.upvoteDecision = (req, res) => {
   const decision = db.collection('decisions').doc(req.params.decisionId)
-  const vote = { 
+  const vote = {
     decisionId: req.params.decisionId,
     author: req.user,
     up: true,
     createTime: new Date().toISOString()
-   }
+  }
   db.collection('decisionVotes')
     .where('decisionId', '==', req.params.decisionId)
     .where('author.username', '==', req.user.username)
@@ -25,7 +25,7 @@ exports.upvoteDecision = (req, res) => {
     })
     .then(doc => {
       if (!doc.exists) {
-        const error = new Error("Decision does not exist.")
+        const error = new Error('Decision does not exist.')
         error.code = 400
         throw error
       }
@@ -63,9 +63,9 @@ exports.deleteVoteOnDecision = (req, res) => {
     })
     .then(doc => {
       if (!doc.exists) {
-        const error = new Error("Decision does not exist.")
+        const error = new Error('Decision does not exist.')
         error.code = 400
-        throw error  
+        throw error
       }
       return decision.update({ upvotes: doc.data().upvotes - 1 })
     })
@@ -97,4 +97,3 @@ exports.deleteVoteOnDecisionComponent = (req, res) => {
 exports.downVoteDecisionComponent = (req, res) => {
   res.status(501).end()
 }
-

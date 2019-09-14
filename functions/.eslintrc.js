@@ -5,7 +5,7 @@ module.exports = {
     node: true
   },
   extends: [
-    'eslint:recommended'
+    'standard'
   ],
   globals: {
     Atomics: 'readonly',
@@ -15,6 +15,5 @@ module.exports = {
     ecmaVersion: 2018
   },
   rules: {
-    "require-atomic-updates": 1
   }
 }
