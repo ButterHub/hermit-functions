@@ -3,7 +3,10 @@ const {admin, db} = require('../util/admin');
 exports.firebaseAuthentication = async (req, res, next) => {
   try {
     const token = getAuthTokenFromHeader(req.headers.authorization)
-    const decodedIdToken = await admin.auth().verifyIdToken(token)
+    const decodedIdToken = await admin.auth().verifyIdToken(token).catch(error => {
+      console.error(error)
+      throw new Error("Token invalid, please log in again or provide a valid token.")
+    })
     const userQuerySnapshot = await db.collection('users').where('authUID', '==', decodedIdToken.user_id).limit(1).get()
   if (userQuerySnapshot.empty) {
     throw new Error("User does not exist.")

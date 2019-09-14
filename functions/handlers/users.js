@@ -216,23 +216,17 @@ exports.uploadProfilePicture = async (req, res) => {
   })
 
   busboy.on('finish', async () => {
-    // Improvements: The problem with the current implementation is its creating the URL manually, from an expected template/ example URL, see the template literal. If the URL's are changed in the future, then this function has to be updated. It is preferrable to get the URL through the SDK instead.
     const destinationFilePath = `images/profiles/${localFileName}`
-    const destinationFilePathPercentEncoded = `images%2Fprofiles%2F${localFileName}`
     const gcsOptions = {
       destination: destinationFilePath
     }
-    await admin.storage().bucket().upload(localFilePath, gcsOptions)
-    // const pictureUrl = `https://firebasestorage.googleapis.com/v0/b/${
-    //   firebaseConfig.storageBucket
-    // }/o/${destinationFilePath}?alt=media`; // using %2F instead of / to workaround Firebase's glitch with directories
-    const pictureUrlPercentEncoded = `https://firebasestorage.googleapis.com/v0/b/${
-      firebaseConfig.storageBucket
-    }/o/${destinationFilePathPercentEncoded}?alt=media`
-    await db.collection('users').doc(req.user.username).update({ pictureUrl: pictureUrlPercentEncoded })
-    return res.json({ pictureUrl: pictureUrlPercentEncoded })
+    const uploadResponse = await admin.storage().bucket().upload(localFilePath, gcsOptions)
+    const pictureUrl = uploadResponse[1].mediaLink // [0] is 'file' [1] is 'full API response.. Ugh. https://googleapis.dev/nodejs/storage/latest/global.html#UploadResponse
+    await db.collection('users').doc(req.user.username).update({ pictureUrl })
+    return res.json({ pictureUrl })
   })
-  busboy.end(req.rawBody) // Ending busboy WritableStream with final (& only) input,
+  // Ending (and more importantly, starting) busboy WritableStream with final (& only) input,
+  busboy.end(req.rawBody) 
 }
 
 // TODO create separate function trigger: cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
