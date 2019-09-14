@@ -15,5 +15,6 @@ module.exports = {
     ecmaVersion: 2018
   },
   rules: {
+    "require-atomic-updates": 1
   }
 }

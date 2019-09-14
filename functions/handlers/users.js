@@ -144,7 +144,6 @@ exports.getCurrentUser = (req, res) => {
 exports.getUser = async (req, res) => {
   try {
     // TODO extract common promise.all code
-    // TODO response dependent on user permissions & co-visibility
     const [userWithPrivateDetails, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions] = await Promise.all([
       db.collection('users').doc(req.params.username).get()
         .then(userDoc => {
@@ -230,8 +229,8 @@ exports.uploadProfilePicture = async (req, res) => {
     const pictureUrlPercentEncoded = `https://firebasestorage.googleapis.com/v0/b/${
       firebaseConfig.storageBucket
     }/o/${destinationFilePathPercentEncoded}?alt=media`
-    await db.collection('users').doc(req.user.username).update({ pictureUrlPercentEncoded })
-    return res.json({ pictureUrlPercentEncoded })
+    await db.collection('users').doc(req.user.username).update({ pictureUrl: pictureUrlPercentEncoded })
+    return res.json({ pictureUrl: pictureUrlPercentEncoded })
   })
   busboy.end(req.rawBody) // Ending busboy WritableStream with final (& only) input,
 }
@@ -281,14 +280,24 @@ exports.addUserInformation = async (req, res) => {
   }
 }
 
-exports.userDetailsChange = async (snapshot, context) => {
-  console.log(snapshot, context)
-  // const {before, after} = snapshot.change
-  // if (before.pictureUrl !== after.pictureUrl) {
-  //   await Promise.all([
-  //       // update all collections that have pictureUrl
-  //       // update decisions
-  //       // update comments
-  //   ])
-  // }
+exports.userDetailsChange = change => {
+  if (change.before.data().pictureUrl !== change.after.data().pictureUrl) {
+    const batch = db.batch()
+    return Promise.all([
+        db.collection('decisions').where('author.username', '==', change.before.id).get()
+        .then(authoredDecisionsSnapshot => {
+          authoredDecisionsSnapshot.forEach(doc => {
+            batch.update(db.collection('decisions').doc(doc.id), {"author.pictureUrl": change.after.data().pictureUrl})
+          })
+        }),
+          db.collection('comments').where('author.username', '==', change.before.id).get()
+          .then(authoredDecisionsSnapshot => {
+            authoredDecisionsSnapshot.forEach(doc => {
+              batch.update(db.collection('comments').doc(doc.id), {"author.pictureUrl": change.after.data().pictureUrl})
+            })
+          })
+      ]).then(() => batch.commit())
+  } else {
+    return "pictureUrl was not changed."
+  }
 }

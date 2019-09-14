@@ -2,12 +2,18 @@ const { db, admin } = require('../util/admin')
 
 exports.createDecisionComponent = async (req, res) => {
     // todo add permissions to decisions/ components
-    const { headline, summary, deadline } = req.body
+    const { headline, summary, deadline, stage } = req.body
     try {
-        const decisionComponentCollection = db.collection('decisionComponents')
+        const decisionDoc = await db.collection('decisions').doc(req.params.decisionId).get()
+        if (decisionDoc.data().author.username !== req.user.username) {
+            const error = new Error("Only decision authors can create decision")
+            error.code = 403
+            throw error
+        }
         const decisionComponent = {
             decisionId: req.params.decisionId,
             headline,
+            stage,
             summary,
             deadline,
             upvotes: 0,
@@ -17,13 +23,13 @@ exports.createDecisionComponent = async (req, res) => {
         db.collection('decisions').doc(req.params.decisionId).update({
             watchers: admin.firestore.FieldValue.arrayUnion(req.user.username)
         })
-        const doc = await decisionComponentCollection.add(decisionComponent)
+        const doc = await db.collection('decisionComponents').add(decisionComponent)
         decisionComponent.decisionComponentId = doc.id
         return res.status(201).json(decisionComponent)
     }
     catch(error) {
         console.error(error)
-        return res.status(500).json({"message": error.message})
+        return res.status(error.code || 500).json({"message": error.message})
     }
 }
 

@@ -1,6 +1,9 @@
 const {db, admin} = require('../util/admin')
 
+// TODO implement a search for decisions. Try Algolia?
+
 exports.getAllDecisions = (req, res) => {
+    // TODO response dependent on user permissions & co-visibility
   db.collection('decisions')
   .orderBy('createTime', 'desc')
   .get()
@@ -64,7 +67,7 @@ exports.deleteDecision = (req, res) => {
 
 exports.getDecision = (req, res) => {
   Promise.all([
-    db.doc(`/decisions/${req.params.decisionId}`).get()
+    db.collection('decisions').doc(req.params.decisionId).get()
   .then(doc => {
     if (!doc.exists) {
       const error = new Error("Decision does not exist.")
@@ -73,16 +76,36 @@ exports.getDecision = (req, res) => {
     }
     return doc.data()
   }),
-    db.collection('comments')
-    .orderBy('createTime', 'desc')
-    .where('decisionComponentId', '==', req.params.decisionId).get()
-    .then(querySnapshot => {
-      const comments = []
-      querySnapshot.forEach(doc => {
-        comments.push(doc.data())
+  db.collection('decisionComponents')
+  .where('decisionId', '==', req.params.decisionId).get()
+  .then(querySnapshot => {
+    const decisionComponents = []
+    querySnapshot.forEach(decisionComponentDoc => {
+      const decisionComponent = decisionComponentDoc.data()
+      decisionComponent.decisionComponentId = decisionComponentDoc.id
+      decisionComponents.push(decisionComponent)
+    })
+    return decisionComponents
+  })
+  .then(async decisionComponents => {
+    return await Promise.all(decisionComponents.map(async decisionComponent => {
+      const decisionComponentComments = []
+      await db.collection('comments').where('decisionComponentId', '==', decisionComponent.decisionComponentId).get()
+      .then(querySnapshot => {
+        console.log(querySnapshot)
+        querySnapshot.forEach(comment => {
+          decisionComponentComments.push(comment.data())
+        })
+        decisionComponent.comments = decisionComponentComments
+        console.log(decisionComponent)
+        return decisionComponent
       })
-      return comments
-    }),
+    }))
+  })
+  .catch(error => {
+    console.error(error)
+    throw new Error("Server is struggling.")
+  }),
     db.collection('decisionVotes').where('decisionId', '==', req.params.decisionId).get()
     .then(querySnapshot => {
       const upvotes = []
@@ -92,8 +115,8 @@ exports.getDecision = (req, res) => {
       return upvotes
     })
   ])
-  .then(([decision, comments, decisionUpvotes]) => {
-    return res.json({...decision, comments, decisionUpvotes})
+  .then(([decision, decisionComponents, decisionUpvotes]) => {
+    return res.json({...decision, decisionComponents, decisionUpvotes})
   })
   .catch(error => {
     console.error(error)

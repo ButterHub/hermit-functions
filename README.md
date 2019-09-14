@@ -2,8 +2,8 @@
 Serverless functions for Hermit, hosted on firebase. 
 
 # Tasks
-1. Implement userDetailsChange trigger
-2. Test all endpoints
+1. Test all endpoints
+2. Validation of request bodies
 3. Update models.json
 4. Get hermit-prod firebase environment setup
 5. Implement delete account, delete decision, delete comment, delete decisionComponent

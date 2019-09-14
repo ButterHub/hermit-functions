@@ -33,7 +33,7 @@ apiApp.put('/decisionComponents/:decisionComponentId', firebaseAuthentication, e
 
 // COMMENTS
 const { createComment, deleteComment } = require('./handlers/comments')
-apiApp.post('/comments/:decisionComponentId', firebaseAuthentication, createComment)
+apiApp.post('/decisionComponent/:decisionComponentId/comments', firebaseAuthentication, createComment)
 apiApp.delete('/comments/:commentId', firebaseAuthentication, deleteComment)
 
 // VOTES

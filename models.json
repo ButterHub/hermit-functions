@@ -15,6 +15,7 @@
     },
     "decisionComponents": {
         "decisionId": "",
+        "stage": "",
         "headline": "",
         "summary": "The author of the decision can write the summary, other people can add comments to the component",
         "deadline": new Date(),
