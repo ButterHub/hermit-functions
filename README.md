@@ -7,8 +7,9 @@ Serverless functions for Hermit, hosted on firebase.
 3. Update models.json
 4. Get hermit-prod firebase environment setup
 5. Implement delete account, delete decision, delete comment, delete decisionComponent
-6. Fix false-alarm race-condition warning: https://eslint.org/docs/rules/require-atomic-updates
-7. Complete all #TODO
+6. Implement recents functionality (list of recently accessed decisions)
+7. Add more functionality as frontend sees fit
+8. Complete all #TODO
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
