@@ -1,12 +1,12 @@
 {
     "decisions": {
-        "userId": "",
+        "username": "",
         "importance": 0,
         "visibility": "",
         "advisors": [],
         "status": "",
         "headline": "", 
-        "context": "",
+        "body": "",
         "conclusion": "",
         "files": {},
         "watchers": [],
@@ -16,37 +16,49 @@
     "decisionComponents": {
         "decisionId": "",
         "headline": "",
-        "summary": "",
-        "deadline": new Date();
+        "summary": "The author of the decision can write the summary, other people can add comments to the component",
+        "deadline": new Date(),
+        "upvotes": 0,
+        "downvotes": 0,
+        "createTime": ""
     },
     "comments": {
-        "userId": "",
-        "objectId": "",
-        // Note objectId refers to either comments, decisions, decisionComponents, and maybe more later on!
+        "username": "",
+        "decisionComponentId": "",
         "body": ""
     },
     "decisionVotes": {
-        "userId": "",
+        "username": "",
         "decisionId": "",
         "score": ""
     },
     "decisionComponentVotes": {
-        "userId": "",
+        "username": "",
         "decisionComponentId": "",
         "score": ""
     },
     "users": {
-        "userId": "",
+        "authUID": "generatedFromFirebaseAuthenticationService",
         "email": "",
+        "name": "",
+        "pictureUrl": "",
         "token": "",
-        "pictureUrl": ""
+        "username": "",
+        "about": "",
+        "bannerPicture": "",
+        "externalProfiles": {
+            "linkedin": "",
+            "facebook": ""
+        },
+        "headline": "",
+        "location": ""
     },
     "notifications": {
-        "userId": "",
+        "username": "",
         "read": false,
-        "recipientUserId": "",
-        "senderUserId": "",
-        "type": "", // Comment or Upvote,
+        "recipientUsername": "",
+        "senderUsername": "",
+        "type": "comment OR upvote",
         "decisionId": "",
         "createTime": ""
     }

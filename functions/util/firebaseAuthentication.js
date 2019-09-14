@@ -1,32 +1,39 @@
 const {admin, db} = require('../util/admin');
 
-exports.firebaseAuthentication = (req, res, next) => {
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(' ')[1]
-  } else {
-    console.error("No token found.")
-    return res.status(401).json({message: "Authorization header (Bearer token) e.g. 'bearer x2w4dvw34' not provided."})
-  }
-  return admin.auth().verifyIdToken(token)
-  .then(decodedIdToken => {
-    const {user_id, name} = decodedIdToken
-    req.user = {
-      user_id, name
-    }
-    return db.collection('users').doc(decodedIdToken.uid).get()
-  })
-  .then(doc => {
-    if (!doc.exists) {
+exports.firebaseAuthentication = async (req, res, next) => {
+  try {
+    const token = getAuthToken(req.headers.authorization)
+    const decodedIdToken = await admin.auth().verifyIdToken(token).catch(error => {
+      console.error(error)
+      const publicError = new Error("Your token is not valid, try regenerating another by logging in.")
+      publicError.code = 401
+      throw publicError
+    })
+    const authUID = decodedIdToken.user_id
+    const userQuerySnapshot = await db.collection('users').where('authUID', '==', authUID).limit(1).get()
+    if (userQuerySnapshot.empty) {
       throw new Error("User does not exist.")
     }
-    const docData = doc.data()
-    req.user.name = docData.name
-    req.user.pictureUrl = docData.pictureUrl
+    const userWithInternalData = userQuerySnapshot.docs[0].data()
+    req.user = {
+      username: userQuerySnapshot.docs[0].id,
+      name: userWithInternalData.name,
+      pictureUrl: userWithInternalData.pictureUrl
+    }
+
     return next()
-  })
-  .catch(error => {
+  } catch(error) {
     console.error(error)
-    res.status(500).json({message: "Token verification failed."})
-  })
+    return res.status(error.code || 500).json({message: error.message})
+  }
+}
+
+function getAuthToken(authorizationHeader) {
+  if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
+      return authorizationHeader.split(' ')[1]
+  } else {
+    const error = new Error("Authorization header (Bearer token) not provided. e.g. 'Authorization: Bearer 1231248y123hrinewjbfoqiu23gr52grfqbaefb'")
+    error.code = 400
+    throw error
+  }
 }

@@ -15,7 +15,7 @@ exports.createDecisionComponent = async (req, res) => {
             createTime: new Date().toISOString()
         }
         db.collection('decisions').doc(req.params.decisionId).update({
-            watchers: admin.firestore.FieldValue.arrayUnion(req.user.user_id)
+            watchers: admin.firestore.FieldValue.arrayUnion(req.user.username)
         })
         const doc = await decisionComponentCollection.add(decisionComponent)
         decisionComponent.decisionComponentId = doc.id
@@ -27,7 +27,29 @@ exports.createDecisionComponent = async (req, res) => {
     }
 }
 
-exports.editDecisionComponent = (req, res) => {
-    // TODO implement editing decision component
-    res.status(501).end()
+exports.editDecisionComponent = async (req, res) => {
+    try {
+        const updatedFields = {}
+        const { headline, summary, deadline } = req.body
+        const decisionComponentId = req.params.decisionComponentId
+        if (headline && headline.trim() !== "") {
+            updatedFields.headline = headline
+        }
+        if (summary && summary.trim() !== "") {
+            updatedFields.summary = summary
+        }
+        if (deadline && deadline.trim() !== "") {
+            updatedFields.deadline = deadline
+        }
+        
+        if (Object.keys(updatedFields).length > 0) {
+            await db.collection('decisionComponents').doc(decisionComponentId).update(updatedFields)
+            return res.status(200).end()
+        } else {
+            return res.status(400).end()
+        }
+    } catch(error) {
+        console.log(error)
+        return res.status(500).end()
+    }
 }

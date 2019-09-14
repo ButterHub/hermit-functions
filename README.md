@@ -5,7 +5,6 @@ Serverless functions for Hermit, hosted on firebase.
 1. Test all endpoints
 2. Update models.json
 3. Get hermit-prod firebase environment setup
-4. Go through all #TODO
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
@@ -20,3 +19,4 @@ Serverless functions for Hermit, hosted on firebase.
 
 # Future challenges
 1. Renaming comments collection without losing data or uptime, when supporting decision comments alongside decision component comments.
+2. Update FCM

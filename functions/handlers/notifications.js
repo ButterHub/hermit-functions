@@ -10,14 +10,14 @@ exports.createNotificationOnDecisionUpvote = async snap => {
       throw error
     }
     const decision = decisionDoc.data()
-    if (vote.up === true && decision.userId !== vote.userId) {
+    if (vote.up === true && decision.username !== vote.username) {
       const batch = db.batch()
       decision.watchers.forEach(watcher => {
           const notificationRef = db.collection('notifications').doc(`${snap.id}-${watcher}`)
           batch.set(notificationRef, {
             createTime: new Date().toISOString(),
             recipients: decision.watchers,
-            sender: vote.userId,
+            sender: vote.username,
             type: "upvote",
             read: false,
             decisionId: decisionDoc.id
@@ -31,11 +31,11 @@ exports.createNotificationOnDecisionUpvote = async snap => {
 }
 
 exports.deleteNotificationOnDeleteDecisionUpvote = async snap => {
-  const { decisionId, userId } = snap.data()
+  const { decisionId, username } = snap.data()
   const batch = db.batch()
   const notificationsSnapshot = await db.collection('notifications')
   .where('decisionId', '==', decisionId)
-  .where('sender', '==', userId)
+  .where('sender', '==', username)
   .where('type', '==', 'upvote').get()
   if (notificationsSnapshot.empty) {
     return console.log("No relevant notifications found.")
@@ -72,7 +72,7 @@ exports.markNotificationAsRead = async (req, res) => {
       throw error
     }
     const notification = notificationDoc.data()
-    if (notification.userId !== req.user.user_id) {
+    if (notification.username !== req.user.username) {
       const error = new Error("Notification does not belong to current user.")
       error.code = 403
       throw error

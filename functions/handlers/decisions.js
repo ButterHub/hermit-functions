@@ -47,7 +47,7 @@ exports.deleteDecision = (req, res) => {
       error.code = 400
       throw error;
     }
-    if ( !doc.userId === req.user.user_id ) {
+    if ( !doc.username === req.user.username ) {
       const error = new Error("You cannot delete this decision.")
       error.code = 404
       throw error;

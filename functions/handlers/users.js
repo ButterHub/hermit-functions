@@ -8,7 +8,6 @@ const isValidEmail = (email) => {
   return emailPattern.test(email)
 }
 
-// TODO, what if the api doesn't send a required field? it just blows up currently...
 exports.registerUser = async (req, res) => {
   let user
   const errors = []
@@ -25,74 +24,72 @@ exports.registerUser = async (req, res) => {
   if (errors.length > 0) {
     return res.status(400).json(errors)
   }
-  // Check email and username already in collection
-  let userId
   return db.collection('users').where('email', '==', email).get()
     .then(snapshot => {
       if (!snapshot.empty) {
-        return Promise.reject(new RegisteredEmailError('This email address is already in use.'))
+        const error = new RegisteredEmailError('This email address is already in use.')
+        error.code = 'auth/email-already-in-use'
+        return Promise.reject(error)
       } else {
-        return db.collection('users').where('username', '==', username).get()
+        return db.collection('users').doc(username).get()
       }
     })
-    .then(snapshot => {
-      if (!snapshot.empty) {
-        return Promise.reject(new RegisteredUsernameError('This username is already in use.'))
+    .then(userDoc => {
+      if (userDoc.exists) {
+        const error = new RegisteredUsernameError('This username is already in use.')
+        error.code = 409
+        return Promise.reject(error)
       } else {
-        // Below implicitly checks Firebase Authentication for email
         return firebase.auth().createUserWithEmailAndPassword(email, password)
       }
     })
     .then(async userCredential => {
-      userId = userCredential.user.uid
+      const authUID = userCredential.user.uid
       const [token, defaultPictureUrl] = await Promise.all([userCredential.user.getIdToken(), getDefaultProfilePicture()])
       user = {
         token,
-        username,
         email,
         name,
+        authUID,
         pictureUrl: defaultPictureUrl
       }
-      return db.collection('users').doc(userId).set(user)
+      return db.collection('users').doc(username).set(user)
     })
     .then(() => {
-      user.id = userId
       return res.status(201).json(user)
     })
     .catch(async error => {
       console.error(error)
-      if (error instanceof RegisteredEmailError) {
-        return res.status(400).json({ message: error.message })
-      }
-      if (error.code === 'auth/email-already-in-use') {
-        return res.status(409).json({ message: error.message })
-      }
-      return res.status(500).json({ message: 'Unable to register user.' })
+      return res.status(error.code).json({ message: error.message })
     })
 }
 
-exports.loginUser = (req, res) => {
-  const { password, email } = req.body
-  firebase.auth().signInWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      return userCredential.user.getIdToken()
-    }) // TODO Add token to user db.
-    .then(token => {
-      return res.json({ token })
-    })
-    .catch(err => {
-      console.error(err)
-      return res.status(500).json({ message: 'Please check your email and password.' })
-    })
+exports.loginUser = async (req, res) => {
+  const userCollection = db.collection('users')
+  const { email, password } = req.body
+  try {
+    const userCredentials = await firebase.auth().signInWithEmailAndPassword(email, password)
+    const token = await userCredentials.user.getIdToken()
+    await userCollection.where('email', '==', email).limit(1).get()
+        .then(querySnapshot => {
+          return querySnapshot.docs[0].id
+        })
+        .then(username => userCollection.doc(username).update({token}))
+        
+    return await res.json({token})
+  } catch(error) {
+    console.error(error)
+    return res.status(500).json({ message: 'Please check your email and password.' })
+  }
 }
 
 exports.getCurrentUser = (req, res) => {
   Promise.all([
-    db.doc(`/users/${req.user.user_id}`).get()
-      .then(doc => {
-        return doc.data()
+    db.collection('users').where('username', '==', req.user.username).limit(1).get()
+      .then(querySnapshot => {
+        return querySnapshot.docs[0].data()
       }),
-    db.collection('votes').where('userId', '==', req.user.user_id).get()
+    db.collection('votes').where('username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
       .then(querySnapshot => {
         const authoredUpvotes = []
         querySnapshot.forEach(doc => {
@@ -100,7 +97,7 @@ exports.getCurrentUser = (req, res) => {
         })
         return authoredUpvotes
       }),
-    db.collection('comments').where('userId', '==', req.user.user_id).get()
+    db.collection('comments').where('username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
       .then(querySnapshot => {
         const commentsGiven = []
         querySnapshot.forEach(doc => {
@@ -108,7 +105,7 @@ exports.getCurrentUser = (req, res) => {
         })
         return commentsGiven
       }),
-    db.collection('decisions').where('userId', '==', req.user.user_id).get()
+    db.collection('decisions').where('username', '==', req.user.username).limit(10).get()
       .then(querySnapshot => {
         const decisions = []
         querySnapshot.forEach(doc => {
@@ -116,7 +113,7 @@ exports.getCurrentUser = (req, res) => {
         })
         return decisions
       }),
-    db.collection('notifications').where('recipientUserId', '==', req.user.user_id).orderBy('createTime').limit(10).get()
+    db.collection('notifications').where('recipientUsername', '==', req.user.username).orderBy('createTime').limit(10).get()
     .then(querySnapshot => {
       const notifications = []
       querySnapshot.forEach(doc => {
@@ -125,16 +122,77 @@ exports.getCurrentUser = (req, res) => {
         notifications.push(notification)
       })
       return notifications
+    }),
+    db.collection('decisions').where('watchers','array-contains', req.user.username).get()
+    .then(querySnapshot => {
+      const watchedDecisions = []
+      querySnapshot.forEach(doc => {
+        watchedDecisions.push(doc.data())
+      })
+      return watchedDecisions
     })
   ])
-    .then(([userCredentials, authoredUpvotes, commentsGiven, decisions, notifications]) => {
-      userCredentials.userId = req.user.user_id
-      return res.json({ ...userCredentials, authoredUpvotes, commentsGiven, decisions, notifications })
+    .then(([userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions]) => {
+      return res.json({ ...userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
     })
     .catch(error => {
       console.log(error)
       return res.status(500).json({ message: error.code })
     })
+}
+
+exports.getUser = async (req, res) => {
+  try {
+    // TODO extract common promise.all code
+    // TODO response dependent on user permissions & co-visibility
+    const [userWithPrivateDetails, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions] = await Promise.all([
+      db.collection('users').doc(req.params.username).get()
+        .then(userDoc => {
+          if (!userDoc.exists) {
+            const error = new Error("User does not exist.")
+            error.code = 400
+            throw error
+          }
+          return userDoc.data()
+        }),
+      db.collection('votes').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const authoredUpvotes = []
+          querySnapshot.forEach(doc => {
+            authoredUpvotes.push(doc.data())
+          })
+          return authoredUpvotes
+        }),
+      db.collection('comments').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const comments = []
+          querySnapshot.forEach(doc => {
+            comments.push(doc.data())
+          })
+          return comments
+        }),
+      db.collection('decisions').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+        .then(querySnapshot => {
+          const decisions = []
+          querySnapshot.forEach(doc => {
+            decisions.push(doc.data())
+          })
+          return decisions
+        })
+    ])
+    .catch(error => {
+      console.error(error)
+      const publicError = new Error("Server is struggling with its database queries.")
+      throw publicError
+    })
+    const { pictureUrl } = userWithPrivateDetails
+      const user = {pictureUrl, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions}
+      return res.status(200).json(user)
+  } catch(error) {
+    console.error(error)
+    res.status(error.code || 500).json({message: error.message})
+  }
+
 }
 
 exports.uploadProfilePicture = async (req, res) => {
@@ -152,7 +210,8 @@ exports.uploadProfilePicture = async (req, res) => {
     if (mimetype !== 'image/jpeg' && mimetype !== 'image.png') {
       return res.status(400).json({ message: 'Only .png and .jpg supported' })
     }
-    localFileName = `${Math.round(Math.random() * 1000000000)}-${filename}`
+    const format = filename.split('.')[filename.split('.').length - 1]
+    localFileName = req.user.username + "." + format
     localFilePath = path.join(os.tmpdir(), localFileName)
     file.pipe(fs.createWriteStream(localFilePath))
   })
@@ -171,91 +230,63 @@ exports.uploadProfilePicture = async (req, res) => {
     const pictureUrlPercentEncoded = `https://firebasestorage.googleapis.com/v0/b/${
       firebaseConfig.storageBucket
     }/o/${destinationFilePathPercentEncoded}?alt=media`
-    await db.doc(`/users/${req.user.user_id}`).update({ pictureUrlPercentEncoded })
+    await db.collection('users').doc(req.user.username).update({ pictureUrlPercentEncoded })
     return res.json({ pictureUrlPercentEncoded })
   })
   busboy.end(req.rawBody) // Ending busboy WritableStream with final (& only) input,
 }
 
-// TODO create separate function listening to cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
+// TODO create separate function trigger: cloudStorage/images/profiles/*: create different sizes (thumbnail, small, full)
 
 exports.addUserInformation = async (req, res) => {
-  // Use to add information seen on profiles to user documents in users collection
-  // Information includes externalProfiles, bannerPicture, headline, location, about
+  const SUPPORTED_EXTERNAL_PROFILES = ["linkedin", "facebook"]
+
   const { externalProfiles, bannerPicture, headline, location, about } = req.body
-  // TODO validate the above
   const information = {}
-  if (bannerPicture.trim() === '') {
-    information.externalProfiles = externalProfiles.trim()
-  }
-  if (headline.trim() === '') {
-    information.headline = headline.trim()
-  }
-  if (location.trim() === '') {
-    information.location = location.trim()
-  }
-  if (about.trim() === '') {
-    information.about = about.trim()
-  }
-
-  await db.doc(`/users/${req.user.user_id}`).update(information)
-  res.json({ message: 'user should go here' }) // TODO should return user?
-}
-
-exports.getUser = async (req, res) => {
   try {
-    // TODO extract common promise.all code
-    const [userWithPrivateDetails, authoredUpvotes, comments, decisions, notifications] = await Promise.all([
-      db.collection('users').doc(req.params.userId).get()
-        .then(doc => {
-          if (!user.exists) {
-            const error = new Error("User does not exist.")
-            error.code = 400
-            throw error
+    const parseExternalProfiles = externalProfiles => {
+      const parsedExternalProfiles = {}
+      if (externalProfiles) {
+        Object.keys(externalProfiles).forEach(key => {
+          if (SUPPORTED_EXTERNAL_PROFILES.includes(key)) {
+            parsedExternalProfiles[key] = externalProfiles[key]
           }
-          return doc.data()
-        }),
-      db.collection('votes').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const authoredUpvotes = []
-          querySnapshot.forEach(doc => {
-            authoredUpvotes.push(doc.data())
-          })
-          return authoredUpvotes
-        }),
-      db.collection('comments').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const comments = []
-          querySnapshot.forEach(doc => {
-            comments.push(doc.data())
-          })
-          return comments
-        }),
-      db.collection('decisions').where('userId', '==', req.user.user_id).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const decisions = []
-          querySnapshot.forEach(doc => {
-            decisions.push(doc.data())
-          })
-          return decisions
-        }),
-      db.collection('notifications').where('recipientUserId', '==', req.user.user_id).orderBy('createTime').limit(10).get()
-      .then(querySnapshot => {
-        const notifications = []
-        querySnapshot.forEach(doc => {
-          const notification = doc.data()
-          notification.notificationId = doc.id
-          notifications.push(notification)
         })
-        return notifications
-      })
-    ])
-    const { pictureUrl } = userWithPrivateDetails
-      const user = {pictureUrl, authoredUpvotes, comments, decisions, notifications, userId: req.params.userId}
-      return res.status(200).json(user)
+      }
+      return parsedExternalProfiles
+    }
+  // TODO validate below
+    information.externalProfiles = parseExternalProfiles(externalProfiles)
+    if (bannerPicture && bannerPicture.trim() !== '') {
+      information.bannerPicture = bannerPicture.trim()
+    }
+    if (headline && headline.trim() !== '') {
+      information.headline = headline.trim()
+    }
+    if (location && location.trim() !== '') {
+      information.location = location.trim()
+    }
+    if (about && about.trim() !== '') {
+      information.about = about.trim()
+    }
+    if (Object.keys(information).length > 0) {
+      await db.collection('users').doc(req.user.username).update(information)
+      return await res.status(200).end()
+    } else {
+      return await res.status(400).end()
+    }
   } catch(error) {
     console.error(error)
-    res.status(error.code).json({message: error.message})
+    return res.status(error.code || 500).json({message: error.message})
   }
+}
 
+exports.userDetailsChange = async (snapshot, context) => {
+  const {before, after} = snapshot.change
+  if (before.pictureUrl !== after.pictureUrl) {
+    await Promise.all([
+        // update all collections that have pictureUrl
+
+    ])
+  }
 }

@@ -3,13 +3,14 @@ const apiApp = require('express')()
 const { firebaseAuthentication } = require('./util/firebaseAuthentication')
 
 //USERS
-const { getUser, getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation } = require('./handlers/users')
+const { getUser, getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation, userDetailsChange } = require('./handlers/users')
 apiApp.post('/users', registerUser)
-apiApp.post('/user', firebaseAuthentication, addUserInformation)
-apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
 apiApp.post('/login', loginUser)
 apiApp.get('/user', firebaseAuthentication, getCurrentUser)
-apiApp.get('/users/:userId', getUser)
+apiApp.post('/user', firebaseAuthentication, addUserInformation)
+apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
+apiApp.get('/users/:username', getUser)
+exports.userDetailsChange = functions.region('europe-west2').firestore.document('users/{id}').onUpdate(userDetailsChange)
 
 const {markNotificationAsRead} = require('./handlers/notifications')
 apiApp.put('/notifications/:notificationId', firebaseAuthentication, markNotificationAsRead)
@@ -43,7 +44,7 @@ apiApp.delete('/decisionComponentVotes/:decisionId', firebaseAuthentication, del
 // REST APIS
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)
 
-// TRIGGERS
+// NOTIFICATIONS
 const { createNotificationOnDecisionUpvote, deleteNotificationOnDeleteDecisionUpvote, createNotificationOnDecisionComponentComment, deleteNotificationOnDeleteDecisionComponentComment, sendFirebaseMessagesOnNewNotification } = require('./handlers/notifications')
 
 exports.createNotificationOnUpvote = functions.region('europe-west2').firestore.document('decisionVotes/{id}')
@@ -55,4 +56,5 @@ exports.createNotificationOnDecisionComponentComment = functions.region('europe-
 
 exports.deleteNotificationOnDeleteDecisionComponentComment = functions.region('europe-west2').firestore.document('comments/{id}').onDelete(deleteNotificationOnDeleteDecisionComponentComment)
 
+// FCM NOTIFICATIONS
 exports.sendFirebaseMessagesOnNewNotification = functions.region('europe-west2').firestore.document('notifications/{id}').onCreate(sendFirebaseMessagesOnNewNotification)

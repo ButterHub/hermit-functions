@@ -2,9 +2,9 @@ const { db, admin } = require('../util/admin')
 
 exports.createComment = async (req, res) => {
   try {
-    if (req.body.body.trim() === '') return res.status(400).json({ message: 'Comment cannot be empty' })
+    if (req.body.body.trim() === '') return res.status(400).json({ body: 'Comment body must not be empty' })
     const comment = {
-      userId: req.user.user_id,
+      username: req.user.username,
       decisionComponentId: req.params.decisionComponentId,
       userPictureUrl: req.user.pictureUrl,
       body: req.body.body
@@ -16,7 +16,7 @@ exports.createComment = async (req, res) => {
       throw error
     }
     db.collection('decisions').doc(decisionComponentDoc.data().decisionId).update({
-      watchers: admin.firestore.FieldValue.arrayUnion(req.user.user_id)
+      watchers: admin.firestore.FieldValue.arrayUnion(req.user.username)
     })
     const commentDoc = await db.collection('comments').add(comment)
     comment.id = commentDoc.id
@@ -34,7 +34,7 @@ exports.deleteComment = (req, res) => {
       if (!doc.exists) {
         return res.status(400).json({ message: 'Comment does not exist.' })
       }
-      if (doc.data().userId !== req.user.user_id) {
+      if (doc.data().username !== req.user.username) {
         return res.status(404).json({ message: 'You cannot delete that comment.' })
       }
       return db.collection('comments').doc(req.params.commentId).delete()
