@@ -12,11 +12,14 @@ exports.firebaseAuthentication = async (req, res, next) => {
       throw new Error('User does not exist.')
     }
     const userDoc = userQuerySnapshot.docs[0]
-    req.user = {
+    const user = {
       username: userDoc.id,
       name: userDoc.data().name,
       pictureUrl: userDoc.data().pictureUrl
     }
+    // False positive eslint rule broken below: require-atomic-updates https://github.com/eslint/eslint/issues/11899
+    req.user = user
+    console.log(req.user.username)
     return next()
   } catch (error) {
     console.error(error)

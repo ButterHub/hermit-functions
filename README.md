@@ -8,6 +8,7 @@ Serverless functions for Hermit, hosted on firebase.
 4. Get hermit-prod firebase environment setup
 5. Implement delete account, delete decision, delete comment, delete decisionComponent
 6. Fix false-alarm race-condition warning: https://eslint.org/docs/rules/require-atomic-updates
+7. Complete all #TODO
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
