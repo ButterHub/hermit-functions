@@ -286,7 +286,7 @@ exports.userDetailsChange = async (snapshot, context) => {
   if (before.pictureUrl !== after.pictureUrl) {
     await Promise.all([
         // update all collections that have pictureUrl
-
+      
     ])
   }
 }

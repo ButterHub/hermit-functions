@@ -1,4 +1,4 @@
-const {db} = require('../util/admin')
+const {db, admin} = require('../util/admin')
 
 exports.getAllDecisions = (req, res) => {
   db.collection('decisions')
@@ -29,7 +29,7 @@ exports.createDecision = (req, res) => {
     downvotes: 0,
     files: [],
     createTime: new Date().toISOString(),
-    watchers: []
+    watchers: [user.username]
   }
   db.collection('decisions').add(decision).then(doc => {
     decision.decisionId = doc.id
@@ -74,7 +74,7 @@ exports.getDecision = (req, res) => {
   }),
     db.collection('comments')
     .orderBy('createTime', 'desc')
-    .where('objectId', '==', req.params.decisionId).get()
+    .where('decisionComponentId', '==', req.params.decisionId).get()
     .then(querySnapshot => {
       const comments = []
       querySnapshot.forEach(doc => {
@@ -82,7 +82,7 @@ exports.getDecision = (req, res) => {
       })
       return comments
     }),
-    db.collection('upvotes').where('objectId', '==', req.params.decisionId).get()
+    db.collection('decisionVotes').where('decisionId', '==', req.params.decisionId).get()
     .then(querySnapshot => {
       const upvotes = []
       querySnapshot.forEach(doc => {
@@ -91,11 +91,35 @@ exports.getDecision = (req, res) => {
       return upvotes
     })
   ])
-  .then(([decision, comments, upvotes]) => {
-    return res.json({...decision, comments, upvotes})
+  .then(([decision, comments, decisionUpvotes]) => {
+    return res.json({...decision, comments, decisionUpvotes})
   })
   .catch(error => {
     console.error(error)
     return res.status(error.code).json({ message: error.message})
   })
+}
+
+exports.watchDecision = async (req, res) => {
+  try {
+      await db.collection('decisions').doc(req.params.decisionId).update({
+        watchers: admin.firestore.FieldValue.arrayUnion(req.user.username)
+    })
+    res.status(200).end()
+  } catch(error) {
+    console.error(error)
+    return res.status(500).json({ error: error.message})
+  }
+}
+
+exports.unwatchDecision = async (req, res) => {
+  try {
+    await db.collection('decisions').doc(req.params.decisionId).update({
+      watchers: admin.firestore.FieldValue.arrayRemove(req.user.username)
+  })
+  res.status(200).end()
+} catch(error) {
+  console.error(error)
+  return res.status(500).json({ error: error.message})
+}
 }

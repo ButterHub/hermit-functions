@@ -16,11 +16,15 @@ const {markNotificationAsRead} = require('./handlers/notifications')
 apiApp.put('/notifications/:notificationId', firebaseAuthentication, markNotificationAsRead)
 
 // DECISIONS
-const { getAllDecisions, createDecision, getDecision, deleteDecision } = require('./handlers/decisions')
+const { getAllDecisions, createDecision, getDecision, deleteDecision, watchDecision, unwatchDecision } = require('./handlers/decisions')
 apiApp.get('/decisions/:decisionId', getDecision)
 apiApp.get('/decisions', getAllDecisions)
 apiApp.post('/decisions', firebaseAuthentication, createDecision)
 apiApp.delete('/decisions/:decisionId', firebaseAuthentication, deleteDecision)
+
+// DECISIONS: WATCHING/ UNWATCHING
+apiApp.put('/decisions/:decisionId/watch', firebaseAuthentication, watchDecision)
+apiApp.delete('/decisions/:decisionId/watch', firebaseAuthentication, unwatchDecision)
 
 // DECISION COMPONENTS
 const {createDecisionComponent, editDecisionComponent} = require('./handlers/decisionComponents')
