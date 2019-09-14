@@ -1,6 +1,6 @@
-const { db }= require('../util/admin')
+const { db } = require('../util/admin')
 
-exports.createNotificationOnDecisionUpvote = async (snap, context) => {
+exports.createNotificationOnDecisionUpvote = async snap => {
   try {
     const vote = snap.data()
     const decisionDoc = await db.collection('decisions').doc(vote.decisionId).get()
@@ -9,30 +9,56 @@ exports.createNotificationOnDecisionUpvote = async (snap, context) => {
       error.code = 400
       throw error
     }
-    if (vote.up === true) {
-      
+    const decision = decisionDoc.data()
+    if (vote.up === true && decision.userId !== vote.userId) {
+      const batch = db.batch()
+      decision.watchers.forEach(watcher => {
+          const notificationRef = db.collection('notifications').doc(`${snap.id}-${watcher}`)
+          batch.set(notificationRef, {
+            createTime: new Date().toISOString(),
+            recipients: decision.watchers,
+            sender: vote.userId,
+            type: "upvote",
+            read: false,
+            decisionId: decisionDoc.id
+        })
+      })
+      return await batch.commit()
     }
-
   } catch(error) {
     return console.error(error)
   }
 }
 
-exports.deleteNotificationOnDeleteDecisionUpvote = (snap, context) => {
+exports.deleteNotificationOnDeleteDecisionUpvote = async snap => {
+  const { decisionId, userId } = snap.data()
+  const batch = db.batch()
+  const notificationsSnapshot = await db.collection('notifications')
+  .where('decisionId', '==', decisionId)
+  .where('sender', '==', userId)
+  .where('type', '==', 'upvote').get()
+  if (notificationsSnapshot.empty) {
+    return console.log("No relevant notifications found.")
+  }
+  notificationsSnapshot.forEach(notification => {
+    batch.delete(notification.ref)
+  })
+  return await batch.commit()
+}
 
+// TODO: Event driven using fcm: send notifications/ or push to queue for user to receive latest notifications?
+exports.sendFirebaseMessagesOnNewNotification = (snap, context) => {
+  // Don't add much content, just "You have unread notifications" to firebase message to user
+  return console.error('Not implemented.', snap, context)
 }
 
 exports.createNotificationOnDecisionComponentComment = (snap, context) => {
-  
+  return console.error('Not implemented.', snap, context)  
 }
 
 exports.deleteNotificationOnDeleteDecisionComponentComment = (snap, context) => {
-
+  return console.error('Not implemented.'), snap, context
 }
-
-// array of notifications to be pulled by client (stored in user)
-// Advanced/ EVENT DRIVEN option: send notifications/ or push to queue for user to receive latest notifications
-
 
 exports.markNotificationAsRead = async (req, res) => {
   const notificationId = req.params.notificationId

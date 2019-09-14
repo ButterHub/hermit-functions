@@ -25,9 +25,14 @@
         // Note objectId refers to either comments, decisions, decisionComponents, and maybe more later on!
         "body": ""
     },
-    "votes": {
+    "decisionVotes": {
         "userId": "",
-        "objectId": "",
+        "decisionId": "",
+        "score": ""
+    },
+    "decisionComponentVotes": {
+        "userId": "",
+        "decisionComponentId": "",
         "score": ""
     },
     "users": {

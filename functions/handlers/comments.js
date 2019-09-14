@@ -1,4 +1,4 @@
-const { db } = require('../util/admin')
+const { db, admin } = require('../util/admin')
 
 exports.createComment = async (req, res) => {
   try {
@@ -15,6 +15,9 @@ exports.createComment = async (req, res) => {
       error.code = 400
       throw error
     }
+    db.collection('decisions').doc(decisionComponentDoc.data().decisionId).update({
+      watchers: admin.firestore.FieldValue.arrayUnion(req.user.user_id)
+    })
     const commentDoc = await db.collection('comments').add(comment)
     comment.id = commentDoc.id
     return res.json(comment)

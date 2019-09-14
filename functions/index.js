@@ -40,16 +40,19 @@ apiApp.put('/decisionComponentVotes/:decisionId/up', firebaseAuthentication, upv
 apiApp.put('/decisionComponentVotes/:decisionId/down', firebaseAuthentication, downVoteDecisionComponent)
 apiApp.delete('/decisionComponentVotes/:decisionId', firebaseAuthentication, deleteVoteOnDecisionComponent)
 
+// REST APIS
 exports.api = functions.region('europe-west2').https.onRequest(apiApp)
 
-const {createNotificationOnUpvote, deleteNotificationOnDeleteDecisionUpvote, createNotificationOnDecisionComponentComment, deleteNotificationOnDeleteDecisionComponentComment } = require('./handlers/notifications')
-exports.createDecisionUpvoteNotifications = functions.region('europe-west2').firestore.document('decisionVotes/{id}')
-.onCreate(createNotificationOnUpvote)
+// TRIGGERS
+const { createNotificationOnDecisionUpvote, deleteNotificationOnDeleteDecisionUpvote, createNotificationOnDecisionComponentComment, deleteNotificationOnDeleteDecisionComponentComment, sendFirebaseMessagesOnNewNotification } = require('./handlers/notifications')
 
-exports.deleteDecisionUpvoteNotifications = functions.region('europe-west2').firestore.document('decisionVotes/{id}').onDelete(deleteNotificationOnDeleteDecisionUpvote)
+exports.createNotificationOnUpvote = functions.region('europe-west2').firestore.document('decisionVotes/{id}')
+.onCreate(createNotificationOnDecisionUpvote)
 
-exports.createDecisionComponentCommentNotifications = functions.region('europe-west2').firestore.document('comments/{id}').onCreate(createNotificationOnDecisionComponentComment)
+exports.deleteNotificationOnDeleteDecisionUpvote = functions.region('europe-west2').firestore.document('decisionVotes/{id}').onDelete(deleteNotificationOnDeleteDecisionUpvote)
 
-exports.deleteDecisionComponentCommentNotifications = functions.region('europe-west2').firestore.document('comments/{id}').onDelete(deleteNotificationOnDeleteDecisionComponentComment)
+exports.createNotificationOnDecisionComponentComment = functions.region('europe-west2').firestore.document('comments/{id}').onCreate(createNotificationOnDecisionComponentComment)
 
-// Future challenge: renaming comments collection, when supporting decision comments alongside decision component comments.
+exports.deleteNotificationOnDeleteDecisionComponentComment = functions.region('europe-west2').firestore.document('comments/{id}').onDelete(deleteNotificationOnDeleteDecisionComponentComment)
+
+exports.sendFirebaseMessagesOnNewNotification = functions.region('europe-west2').firestore.document('notifications/{id}').onCreate(sendFirebaseMessagesOnNewNotification)
