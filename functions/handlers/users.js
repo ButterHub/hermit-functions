@@ -89,7 +89,7 @@ exports.getCurrentUser = (req, res) => {
       .then(querySnapshot => {
         return querySnapshot.docs[0].data()
       }),
-    db.collection('votes').where('username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
+    db.collection('votes').where('author.username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
       .then(querySnapshot => {
         const authoredUpvotes = []
         querySnapshot.forEach(doc => {
@@ -97,7 +97,7 @@ exports.getCurrentUser = (req, res) => {
         })
         return authoredUpvotes
       }),
-    db.collection('comments').where('username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
+    db.collection('comments').where('author.username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
       .then(querySnapshot => {
         const commentsGiven = []
         querySnapshot.forEach(doc => {
@@ -105,7 +105,7 @@ exports.getCurrentUser = (req, res) => {
         })
         return commentsGiven
       }),
-    db.collection('decisions').where('username', '==', req.user.username).limit(10).get()
+    db.collection('decisions').where('author.username', '==', req.user.username).limit(10).get()
       .then(querySnapshot => {
         const decisions = []
         querySnapshot.forEach(doc => {
@@ -155,7 +155,7 @@ exports.getUser = async (req, res) => {
           }
           return userDoc.data()
         }),
-      db.collection('votes').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+      db.collection('votes').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
         .then(querySnapshot => {
           const authoredUpvotes = []
           querySnapshot.forEach(doc => {
@@ -163,7 +163,7 @@ exports.getUser = async (req, res) => {
           })
           return authoredUpvotes
         }),
-      db.collection('comments').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+      db.collection('comments').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
         .then(querySnapshot => {
           const comments = []
           querySnapshot.forEach(doc => {
@@ -171,7 +171,7 @@ exports.getUser = async (req, res) => {
           })
           return comments
         }),
-      db.collection('decisions').where('username', '==', req.params.username).orderBy('createTime', 'desc').get()
+      db.collection('decisions').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
         .then(querySnapshot => {
           const decisions = []
           querySnapshot.forEach(doc => {
@@ -282,11 +282,13 @@ exports.addUserInformation = async (req, res) => {
 }
 
 exports.userDetailsChange = async (snapshot, context) => {
-  const {before, after} = snapshot.change
-  if (before.pictureUrl !== after.pictureUrl) {
-    await Promise.all([
-        // update all collections that have pictureUrl
-      
-    ])
-  }
+  console.log(snapshot, context)
+  // const {before, after} = snapshot.change
+  // if (before.pictureUrl !== after.pictureUrl) {
+  //   await Promise.all([
+  //       // update all collections that have pictureUrl
+  //       // update decisions
+  //       // update comments
+  //   ])
+  // }
 }

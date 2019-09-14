@@ -1,12 +1,13 @@
 const { db, admin } = require('../util/admin')
 
 exports.createComment = async (req, res) => {
+  const { user } = req
   try {
     if (req.body.body.trim() === '') return res.status(400).json({ body: 'Comment body must not be empty' })
     const comment = {
       username: req.user.username,
       decisionComponentId: req.params.decisionComponentId,
-      userPictureUrl: req.user.pictureUrl,
+      author: user,
       body: req.body.body
     }
     const decisionComponentDoc = await db.collection('decisionComponents').doc(req.params.decisionComponentId).get()

@@ -1,34 +1,31 @@
 const {admin, db} = require('../util/admin');
 
-exports.firebaseAuthentication = async (req, res, next) => {
-  try {
-    const token = getAuthToken(req.headers.authorization)
-    const decodedIdToken = await admin.auth().verifyIdToken(token).catch(error => {
-      console.error(error)
-      const publicError = new Error("Your token is not valid, try regenerating another by logging in.")
-      publicError.code = 401
-      throw publicError
+exports.firebaseAuthentication = (req, res, next) => {
+    const token = getAuthTokenFromHeader(req.headers.authorization)
+    admin.auth().verifyIdToken(token)
+    .then(decodedIdToken => {
+      return db.collection('users').where('authUID', '==', decodedIdToken.user_id).limit(1).get()
     })
-    const authUID = decodedIdToken.user_id
-    const userQuerySnapshot = await db.collection('users').where('authUID', '==', authUID).limit(1).get()
-    if (userQuerySnapshot.empty) {
-      throw new Error("User does not exist.")
-    }
-    const userWithInternalData = userQuerySnapshot.docs[0].data()
-    req.user = {
-      username: userQuerySnapshot.docs[0].id,
-      name: userWithInternalData.name,
-      pictureUrl: userWithInternalData.pictureUrl
-    }
+    .then(userQuerySnapshot => {
+      if (userQuerySnapshot.empty) {
+        throw new Error("User does not exist.")
+      }
+      const userDoc = userQuerySnapshot.docs[0]
+      req.user = {
+        username: userDoc.id,
+        name: userDoc.data().name,
+        pictureUrl: userDoc.data().pictureUrl
+      }
+    })
+    .then(() => next())
+    .catch(error => {
+      console.error(error)
+      return res.status(error.code || 500).json({message: error.message})
+    })
 
-    return next()
-  } catch(error) {
-    console.error(error)
-    return res.status(error.code || 500).json({message: error.message})
-  }
 }
 
-function getAuthToken(authorizationHeader) {
+function getAuthTokenFromHeader(authorizationHeader) {
   if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
       return authorizationHeader.split(' ')[1]
   } else {

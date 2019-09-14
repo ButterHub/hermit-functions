@@ -4,13 +4,13 @@ exports.upvoteDecision = (req, res) => {
   const decision = db.collection('decisions').doc(req.params.decisionId)
   const vote = { 
     decisionId: req.params.decisionId,
-    username: req.user.username, 
+    author: req.user,
     up: true,
     createTime: new Date().toISOString()
    }
   db.collection('decisionVotes')
     .where('decisionId', '==', req.params.decisionId)
-    .where('username', '==', req.user.username)
+    .where('author.username', '==', req.user.username)
     .get()
     .then(querySnapshot => {
       if (!querySnapshot.empty) {
@@ -48,7 +48,7 @@ exports.deleteVoteOnDecision = (req, res) => {
   const decision = db.collection('decisions').doc(req.params.decisionId)
   db.collection('decisionVotes')
     .where('decisionId', '==', req.params.decisionId)
-    .where('username', '==', req.user.username)
+    .where('author.username', '==', req.user.username)
     .get()
     .then(querySnapshot => {
       if (querySnapshot.empty) {

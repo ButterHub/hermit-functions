@@ -24,12 +24,13 @@ exports.createDecision = (req, res) => {
   const {context, importance, status, headline, advisors, conclusion} = req.body
   const {user} = req
   const decision = {
-    context, user, importance, status, headline, advisors, conclusion,
+    context, importance, status, headline, advisors, conclusion,
     upvotes: 0,
     downvotes: 0,
     files: [],
     createTime: new Date().toISOString(),
-    watchers: [user.username]
+    watchers: [req.user.username],
+    author: user
   }
   db.collection('decisions').add(decision).then(doc => {
     decision.decisionId = doc.id
@@ -41,13 +42,13 @@ exports.createDecision = (req, res) => {
 
 exports.deleteDecision = (req, res) => {
   db.collection('decisions').doc(req.params.decisionId).get()
-  .then(doc => {
-    if (!doc.exists) {
+  .then(decisionDoc => {
+    if (!decisionDoc.exists) {
       const error = new Error("Document does not exist.")
       error.code = 400
       throw error;
     }
-    if ( !doc.username === req.user.username ) {
+    if ( !decisionDoc.author.username === req.user.username ) {
       const error = new Error("You cannot delete this decision.")
       error.code = 404
       throw error;
