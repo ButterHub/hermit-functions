@@ -1,11 +1,23 @@
 const { db, admin } = require('../util/admin')
-const { RegisteredEmailError, RegisteredUsernameError, sendErrorResponse } = require('../errors')
+const { RegisteredEmailError, sendErrorResponse } = require('../errors')
 const { firebase } = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
+const {documentShouldExist, documentShouldNotExist} = require('../util/validators')
+
+const isPasswordTooWeak = password => {
+  // TODO implement regex check
+  console.log(`${password}, breaking GDPR by logging passwords?!`)
+  return true;
+}
 
 exports.registerUser = async (req, res) => {
   try {
     const { username, email, name, password } = req.body
+    if (isPasswordTooWeak(password)) {
+      const error = new Error("Password is too weak.")
+      error.code = 400
+      throw error
+    }
     const usersQuerySnapshot = await db.collection('users').where('email', '==', email).get()
     if (!usersQuerySnapshot.empty) {
       const error = new RegisteredEmailError('This email address is already in use.')
@@ -13,24 +25,18 @@ exports.registerUser = async (req, res) => {
       throw error
     }
     const userDoc = await db.collection('users').doc(username).get()
-    if (userDoc.exists) {
-      const error = new RegisteredUsernameError('This username is already in use.')
-      error.code = 409
-      throw error
+    documentShouldNotExist(userDoc, 409, 'This username is already in use.')
+    const userCredentials = await firebase.auth().createUserWithEmailAndPassword(email, password)
+    const [token, dynamicDefaultPictureUrl] = await Promise.all([userCredentials.user.getIdToken(), getDefaultProfilePicture()])
+    const user = {
+      token,
+      email,
+      name,
+      authUID:  userCredentials.user.uid,
+      pictureUrl: dynamicDefaultPictureUrl
     }
-      // TODO check firebase auth password strength settings
-      const userCredentials = await firebase.auth().createUserWithEmailAndPassword(email, password)
-      const authUID = userCredentials.user.uid
-      const [token, defaultPictureUrl] = await Promise.all([userCredentials.user.getIdToken(), getDefaultProfilePicture()])
-      const user = {
-        token,
-        email,
-        name,
-        authUID,
-        pictureUrl: defaultPictureUrl
-      }
-      await db.collection('users').doc(username).set(user)
-      return res.status(201).json(user)
+    await db.collection('users').doc(username).set(user)
+    return res.status(201).json(user)
   }
     catch(error) {
       return sendErrorResponse(error, res)
@@ -76,16 +82,13 @@ exports.getCurrentUser = async (req, res) => {
   }
 }
 
+// can the following be turned to async?
 const getPublicUserDetails = username => {
   return db.collection('users')
   .doc(username)
   .get()
   .then(userDoc => {
-    if (!userDoc.exists) {
-      const error = new Error('User does not exist.')
-      error.code = 400
-      throw error
-    }
+    documentShouldExist(userDoc, 400, 'User does not exist.')
     const {pictureUrl, name} = userDoc.data()
     return { pictureUrl, name  } // TODO Switch to ts, create userModel type.
   })
