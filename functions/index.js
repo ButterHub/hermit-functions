@@ -1,6 +1,6 @@
 const functions = require('firebase-functions')
 const apiApp = require('express')()
-const { firebaseAuthentication } = require('./util/firebaseAuthentication')
+const { firebaseAuthentication, optionalFirebaseAuthentication } = require('./util/firebaseAuthentication')
 
 //USERS
 const { getUser, getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation, userDetailsChange } = require('./handlers/users')
@@ -9,7 +9,7 @@ apiApp.post('/login', loginUser)
 apiApp.get('/user', firebaseAuthentication, getCurrentUser)
 apiApp.post('/user', firebaseAuthentication, addUserInformation)
 apiApp.post('/users/profile', firebaseAuthentication, uploadProfilePicture)
-apiApp.get('/users/:username', getUser)
+apiApp.get('/users/:username', optionalFirebaseAuthentication, getUser)
 exports.userDetailsChange = functions.region('europe-west2').firestore.document('users/{id}').onUpdate(userDetailsChange)
 
 const {markNotificationAsRead} = require('./handlers/notifications')

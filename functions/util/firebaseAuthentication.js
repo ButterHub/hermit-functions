@@ -27,6 +27,11 @@ exports.firebaseAuthentication = async (req, res, next) => {
   }
 }
 
+exports.optionalFirebaseAuthentication = (req, res, next) => {
+  console.log("Optional authentication NOT IMPLEMENTED YET, current user not identifiable even with a token.")
+  return next()
+}
+
 function getAuthTokenFromHeader (authorizationHeader) {
   if (authorizationHeader && authorizationHeader.startsWith('Bearer ')) {
     return authorizationHeader.split(' ')[1]

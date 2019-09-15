@@ -1,68 +1,46 @@
 const { db, admin } = require('../util/admin')
-const { RegisteredEmailError, RegisteredUsernameError } = require('../errors')
+const { RegisteredEmailError, RegisteredUsernameError, sendErrorResponse } = require('../errors')
 const { firebase } = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
 
-const isValidEmail = (email) => {
-  const emailPattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-  return emailPattern.test(email)
-}
-
 exports.registerUser = async (req, res) => {
-  let user
-  const errors = []
-  const { username, email, name, password, passwordConfirm } = req.body
-  if (!isValidEmail(email)) {
-    errors.push('Email is not valid.')
-  }
-  if (password !== passwordConfirm) {
-    errors.push('Passwords do not match.')
-  }
-  // if (passwordIsSecure(password)) {
-  //   errors.push("Password is not secure enough.")
-  // }
-  if (errors.length > 0) {
-    return res.status(400).json(errors)
-  }
-  return db.collection('users').where('email', '==', email).get()
-    .then(snapshot => {
-      if (!snapshot.empty) {
-        const error = new RegisteredEmailError('This email address is already in use.')
-        error.code = 'auth/email-already-in-use'
-        return Promise.reject(error)
-      } else {
-        return db.collection('users').doc(username).get()
-      }
-    })
-    .then(userDoc => {
-      if (userDoc.exists) {
-        const error = new RegisteredUsernameError('This username is already in use.')
-        error.code = 409
-        return Promise.reject(error)
-      } else {
-        return firebase.auth().createUserWithEmailAndPassword(email, password)
-      }
-    })
-    .then(async userCredential => {
-      const authUID = userCredential.user.uid
-      const [token, defaultPictureUrl] = await Promise.all([userCredential.user.getIdToken(), getDefaultProfilePicture()])
-      user = {
+  try {
+    const { username, email, name, password } = req.body
+    const usersQuerySnapshot = await db.collection('users').where('email', '==', email).get()
+    if (!usersQuerySnapshot.empty) {
+      const error = new RegisteredEmailError('This email address is already in use.')
+      error.code = 409
+      throw error
+    }
+    const userDoc = await db.collection('users').doc(username).get()
+    if (userDoc.exists) {
+      const error = new RegisteredUsernameError('This username is already in use.')
+      error.code = 409
+      throw error
+    }
+      // TODO check firebase auth password strength settings
+      const userCredentials = await firebase.auth().createUserWithEmailAndPassword(email, password)
+      const authUID = userCredentials.user.uid
+      const [token, defaultPictureUrl] = await Promise.all([userCredentials.user.getIdToken(), getDefaultProfilePicture()])
+      const user = {
         token,
         email,
         name,
         authUID,
         pictureUrl: defaultPictureUrl
       }
-      return db.collection('users').doc(username).set(user)
-    })
-    .then(() => {
+      await db.collection('users').doc(username).set(user)
       return res.status(201).json(user)
-    })
-    .catch(async error => {
-      console.error(error)
-      return res.status(error.code).json({ message: error.message })
-    })
+  }
+    catch(error) {
+      return sendErrorResponse(error, res)
+    }
 }
+
+// TODO generate email login, with template
+// exports.sendLoginLinkEmail = (req, res) => {
+
+// }
 
 exports.loginUser = async (req, res) => {
   const userCollection = db.collection('users')
@@ -70,133 +48,164 @@ exports.loginUser = async (req, res) => {
   try {
     const userCredentials = await firebase.auth().signInWithEmailAndPassword(email, password)
     const token = await userCredentials.user.getIdToken()
-    await userCollection.where('email', '==', email).limit(1).get()
-      .then(querySnapshot => {
-        return querySnapshot.docs[0].id
-      })
-      .then(username => userCollection.doc(username).update({ token }))
-
+    const querySnapshot = await userCollection.where('email', '==', email).limit(1).get()
+    const username = querySnapshot.docs[0].id
+    await userCollection.doc(username).update({ token })
     return await res.json({ token })
   } catch (error) {
-    console.error(error)
-    return res.status(500).json({ message: 'Please check your email and password.' })
+    error.message = 'Please check your email and password.'
+    error.code = 401
+    return sendErrorResponse(error, res)
   }
 }
 
-exports.getCurrentUser = (req, res) => {
-  Promise.all([
-    db.collection('users').where('username', '==', req.user.username).limit(1).get()
-      .then(querySnapshot => {
-        return querySnapshot.docs[0].data()
-      }),
-    db.collection('votes').where('author.username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
-      .then(querySnapshot => {
-        const authoredUpvotes = []
-        querySnapshot.forEach(doc => {
-          authoredUpvotes.push(doc.data())
-        })
-        return authoredUpvotes
-      }),
-    db.collection('comments').where('author.username', '==', req.user.username).orderBy('createTime', 'desc').limit(10).get()
-      .then(querySnapshot => {
-        const commentsGiven = []
-        querySnapshot.forEach(doc => {
-          commentsGiven.push(doc.data())
-        })
-        return commentsGiven
-      }),
-    db.collection('decisions').where('author.username', '==', req.user.username).limit(10).get()
-      .then(querySnapshot => {
-        const decisions = []
-        querySnapshot.forEach(doc => {
-          decisions.push(doc.data())
-        })
-        return decisions
-      }),
-    db.collection('notifications').where('recipientUsername', '==', req.user.username).orderBy('createTime').limit(10).get()
-      .then(querySnapshot => {
-        const notifications = []
-        querySnapshot.forEach(doc => {
-          const notification = doc.data()
-          notification.notificationId = doc.id
-          notifications.push(notification)
-        })
-        return notifications
-      }),
-    db.collection('decisions').where('watchers', 'array-contains', req.user.username).get()
-      .then(querySnapshot => {
-        const watchedDecisions = []
-        querySnapshot.forEach(doc => {
-          watchedDecisions.push(doc.data())
-        })
-        return watchedDecisions
-      })
-  ])
-    .then(([userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions]) => {
-      return res.json({ ...userCredentials, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
+exports.getCurrentUser = async (req, res) => {
+  const { username } = req.user
+  try {
+    const [userDetails, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions] = await Promise.all([
+        getPublicUserDetails(username),
+        getPublicUserDecisionVotes(username),
+        getPublicUserComments(username),
+        getPublicUserDecisions(username),
+        getNotificationsForUser(username),
+        getDecisionsUserIsWatching(username)
+    ])
+    return res.status(200).json({ ...userDetails, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
+  } catch(error) {
+    return sendErrorResponse(error, res)
+  }
+}
+
+const getPublicUserDetails = username => {
+  return db.collection('users')
+  .doc(username)
+  .get()
+  .then(userDoc => {
+    if (!userDoc.exists) {
+      const error = new Error('User does not exist.')
+      error.code = 400
+      throw error
+    }
+    const {pictureUrl, name} = userDoc.data()
+    return { pictureUrl, name  } // TODO Switch to ts, create userModel type.
+  })
+}
+
+const getPublicUserDecisionVotes = username => {
+  return db.collection('decisionVotes')
+  .where('author.username', '==', username)
+  .orderBy('createTime', 'desc')
+  .get()
+  .then(querySnapshot => {
+    const authoredUpvotes = []
+    querySnapshot.forEach(doc => {
+      const vote = doc.data()
+      vote.id = doc.id
+      authoredUpvotes.push(vote)
     })
-    .catch(error => {
-      console.log(error)
-      return res.status(500).json({ message: error.code })
+    return authoredUpvotes
+  })
+}
+
+// TODO accept optional argument for current user id. Return restricted data if allowed. 
+const getPublicUserComments = username => {
+  return db.collection('comments')
+  .where('author.username', '==', username)
+  .orderBy('createTime', 'desc')
+  .get()
+  .then(querySnapshot => {
+    const comments = []
+    querySnapshot.forEach(doc => {
+      const comment = doc.data()
+      comment.id = doc.id
+      comments.push(comment)
     })
+    return comments
+  })
+}
+
+const getPublicUserDecisions = username => {
+  return db.collection('decisions')
+  .where('author.username', '==', username)
+  .orderBy('createTime', 'desc')
+  .limit(10)
+  .get()
+  .then(querySnapshot => {
+    const decisions = []
+    querySnapshot.forEach(doc => {
+      const decision = doc.data()
+      decision.id = doc.id
+      decisions.push(decision)
+    })
+    return decisions
+  })
+}
+
+const getVisibleAuthoredDecisionUpvotes = username => {
+  return db.collection('decisionVotes').where('author.username', '==', username).orderBy('createTime', 'desc').limit(10).get()
+  .then(querySnapshot => {
+    const authoredUpvotes = []
+    querySnapshot.forEach(doc => {
+      const vote = doc.data()
+      vote.id = doc.id
+      authoredUpvotes.push(vote)
+    })
+    return authoredUpvotes
+  })
+}
+
+const getNotificationsForUser = username => {
+  return db.collection('notifications').where('recipientUsername', '==', username).orderBy('createTime').limit(10).get()
+  .then(querySnapshot => {
+    const notifications = []
+    querySnapshot.forEach(doc => {
+      const notification = doc.data()
+      notification.notificationId = doc.id
+      notifications.push(notification)
+    })
+    return notifications
+  })
+}
+
+const getDecisionsUserIsWatching = username => {
+  return db.collection('decisions').where('watchers', 'array-contains', username).get()
+  .then(querySnapshot => {
+    const watchedDecisions = []
+    querySnapshot.forEach(doc => {
+      const decision = doc.data()
+      decision.id = doc.id
+      watchedDecisions.push(decision)
+    })
+    return watchedDecisions
+  })
 }
 
 exports.getUser = async (req, res) => {
+  const { username } = req.params
   try {
-    // TODO extract common promise.all code
-    const [userWithPrivateDetails, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions] = await Promise.all([
-      db.collection('users').doc(req.params.username).get()
-        .then(userDoc => {
-          if (!userDoc.exists) {
-            const error = new Error('User does not exist.')
-            error.code = 400
-            throw error
-          }
-          return userDoc.data()
-        }),
-      db.collection('votes').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const authoredUpvotes = []
-          querySnapshot.forEach(doc => {
-            authoredUpvotes.push(doc.data())
-          })
-          return authoredUpvotes
-        }),
-      db.collection('comments').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const comments = []
-          querySnapshot.forEach(doc => {
-            comments.push(doc.data())
-          })
-          return comments
-        }),
-      db.collection('decisions').where('author.username', '==', req.params.username).orderBy('createTime', 'desc').get()
-        .then(querySnapshot => {
-          const decisions = []
-          querySnapshot.forEach(doc => {
-            decisions.push(doc.data())
-          })
-          return decisions
-        })
+    const [
+      publicUserDetails,
+      visibleAuthoredDecisionUpvotes,
+      visibleAuthoredComments,
+      visibleAuthoredDecisions
+    ] = await Promise.all([
+      getPublicUserDetails(username),
+      getVisibleAuthoredDecisionUpvotes(username),
+      getPublicUserComments(username),
+      getPublicUserDecisions(username)
     ])
-      .catch(error => {
-        console.error(error)
-        const publicError = new Error('Server is struggling with its database queries.')
-        throw publicError
-      })
-    const { pictureUrl } = userWithPrivateDetails
-    const user = { pictureUrl, visibleAuthoredUpvotes, visibleAuthoredComments, visibleAuthoredDecisions }
+    const user = { ...publicUserDetails, visibleAuthoredDecisionUpvotes, visibleAuthoredComments, visibleAuthoredDecisions }
     return res.status(200).json(user)
   } catch (error) {
-    console.error(error)
-    res.status(error.code || 500).json({ message: error.message })
+    return sendErrorResponse(error, res)
   }
 }
 
 exports.uploadProfilePicture = async (req, res) => {
   // Currently saving file locally, then uploading to cloud storage
   // See https://cloud.google.com/storage/docs/streaming to use streaming transfer, skipping temp files step
-  // TODO to generify for banner photo too, send a 'target: profile or target: banner' body param.
+  // TODO to generify code for banner photo too, send a 'target: profile or target: banner' path param.
+  // Is path param the right option for this?
   const path = require('path')
   const os = require('os')
   const fs = require('fs')
@@ -268,8 +277,7 @@ exports.addUserInformation = async (req, res) => {
       return await res.status(400).end()
     }
   } catch (error) {
-    console.error(error)
-    return res.status(error.code || 500).json({ message: error.message })
+    return sendErrorResponse(error, res)
   }
 }
 
