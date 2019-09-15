@@ -20,3 +20,8 @@ exports.documentShouldExist = (doc, errorCode, errorMessage) => {
         throw error
       }
 }
+
+exports.isPasswordTooWeak = password => {
+    // TODO implement regex check
+    return true;
+  }

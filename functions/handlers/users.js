@@ -2,13 +2,7 @@ const { db, admin } = require('../util/admin')
 const { RegisteredEmailError, sendErrorResponse } = require('../errors')
 const { firebase } = require('../util/config')
 const { getDefaultProfilePicture } = require('../util/unsplash')
-const {documentShouldExist, documentShouldNotExist} = require('../util/validators')
-
-const isPasswordTooWeak = password => {
-  // TODO implement regex check
-  console.log(`${password}, breaking GDPR by logging passwords?!`)
-  return true;
-}
+const {documentShouldExist, documentShouldNotExist, isPasswordTooWeak} = require('../util/validators')
 
 exports.registerUser = async (req, res) => {
   try {
