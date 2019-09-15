@@ -1,5 +1,5 @@
 # Hermit
-A collaborative decision making tool. Frontend development begins/ began on 15th September 2019, see the [front-end react repository](https://github.com/ButterHub/hermit-react-mui) and publicly available at [https://not-available.yet](https://not-available.yet).
+A collaborative decision making tool. Frontend development begins/ began on the 16th September 2019, see the [front-end react repository](https://github.com/ButterHub/hermit-react-mui) and publicly available at [https://not-available.yet](https://not-available.yet).
 
 # hermit-functions
 Serverless functions for Hermit, hosted on firebase. 
