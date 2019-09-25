@@ -14,7 +14,7 @@ exports.documentShouldNotExist = (doc, errorCode, errorMessage) => {
 }
 
 exports.documentShouldExist = (doc, errorCode, errorMessage) => {
-    if (doc.exists) {
+    if (!doc.exists) {
         const error = new Error(errorMessage)
         error.code = errorCode
         throw error
@@ -23,5 +23,5 @@ exports.documentShouldExist = (doc, errorCode, errorMessage) => {
 
 exports.isPasswordTooWeak = password => {
     // TODO implement regex check
-    return true;
+    return false;
   }

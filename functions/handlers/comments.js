@@ -5,10 +5,10 @@ exports.createComment = async (req, res) => {
   try {
     if (req.body.body.trim() === '') return res.status(400).json({ body: 'Comment body must not be empty' })
     const comment = {
-      username: req.user.username,
       decisionComponentId: req.params.decisionComponentId,
       author: user,
-      body: req.body.body
+      body: req.body.body,
+      createTime: new Date().toISOString()
     }
     const decisionComponentDoc = await db.collection('decisionComponents').doc(req.params.decisionComponentId).get()
     if (!decisionComponentDoc.exists) {

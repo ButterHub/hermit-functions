@@ -1,6 +1,10 @@
 const functions = require('firebase-functions')
 const apiApp = require('express')()
 const { firebaseAuthentication, optionalFirebaseAuthentication } = require('./util/firebaseAuthentication')
+const { errorHandler } = require('./errors/errorHandlers')
+
+// MIDDLEWARES
+apiApp.use(errorHandler)
 
 //USERS
 const { getUser, getCurrentUser, registerUser, loginUser, uploadProfilePicture, addUserInformation, userDetailsChange } = require('./handlers/users')

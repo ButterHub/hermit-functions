@@ -54,7 +54,7 @@ exports.editDecisionComponent = async (req, res) => {
       return res.status(400).end()
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
     return res.status(500).end()
   }
 }

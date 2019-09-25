@@ -97,12 +97,10 @@ exports.getDecision = (req, res) => {
           const decisionComponentComments = []
           await db.collection('comments').where('decisionComponentId', '==', decisionComponent.decisionComponentId).get()
             .then(querySnapshot => {
-              console.log(querySnapshot)
               querySnapshot.forEach(comment => {
                 decisionComponentComments.push(comment.data())
               })
               decisionComponent.comments = decisionComponentComments
-              console.log(decisionComponent)
               return decisionComponent
             })
         }))

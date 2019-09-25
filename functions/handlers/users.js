@@ -62,7 +62,7 @@ exports.loginUser = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   const { username } = req.user
   try {
-    const [userDetails, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions] = await Promise.all([
+    const [userDetails, authoredDecisionUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions] = await Promise.all([
         getPublicUserDetails(username),
         getPublicUserDecisionVotes(username),
         getPublicUserComments(username),
@@ -70,22 +70,17 @@ exports.getCurrentUser = async (req, res) => {
         getNotificationsForUser(username),
         getDecisionsUserIsWatching(username)
     ])
-    return res.status(200).json({ ...userDetails, authoredUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
+    return res.status(200).json({ ...userDetails, authoredDecisionUpvotes, authoredComments, authoredDecisions, notifications, watchedDecisions })
   } catch(error) {
     return sendErrorResponse(error, res)
   }
 }
 
-// can the following be turned to async?
-const getPublicUserDetails = username => {
-  return db.collection('users')
-  .doc(username)
-  .get()
-  .then(userDoc => {
-    documentShouldExist(userDoc, 400, 'User does not exist.')
-    const {pictureUrl, name} = userDoc.data()
-    return { pictureUrl, name  } // TODO Switch to ts, create userModel type.
-  })
+const getPublicUserDetails = async username => {
+  const userDoc = await db.collection('users').doc(username).get()
+  documentShouldExist(userDoc, 400, 'User does not exist.')
+  const {pictureUrl, name} = userDoc.data()
+  return { pictureUrl, name  }
 }
 
 const getPublicUserDecisionVotes = username => {
@@ -105,68 +100,60 @@ const getPublicUserDecisionVotes = username => {
 }
 
 // TODO accept optional argument for current user id. Return restricted data if allowed. 
-const getPublicUserComments = username => {
-  return db.collection('comments')
-  .where('author.username', '==', username)
-  .orderBy('createTime', 'desc')
-  .get()
-  .then(querySnapshot => {
-    const comments = []
-    querySnapshot.forEach(doc => {
-      const comment = doc.data()
-      comment.id = doc.id
-      comments.push(comment)
-    })
-    return comments
-  })
-}
-
-const getPublicUserDecisions = username => {
-  return db.collection('decisions')
+const getPublicUserComments = async username => {
+  const querySnapshot = await db.collection('comments')
   .where('author.username', '==', username)
   .orderBy('createTime', 'desc')
   .limit(10)
   .get()
-  .then(querySnapshot => {
-    const decisions = []
-    querySnapshot.forEach(doc => {
-      const decision = doc.data()
-      decision.id = doc.id
-      decisions.push(decision)
-    })
-    return decisions
+  console.log(querySnapshot)
+  const comments = []
+  querySnapshot.forEach(doc => {
+    const comment = doc.data()
+    comment.id = doc.id
+    comments.push(comment)
+  })
+  return comments
+}
+
+const getPublicUserDecisions = async username => {
+  const querySnapshot = await db.collection('decisions')
+  .where('author.username', '==', username)
+  .orderBy('createTime', 'desc')
+  .limit(10)
+  .get()
+  const decisions = []
+  querySnapshot.forEach(doc => {
+    const decision = doc.data()
+    decision.id = doc.id
+    decisions.push(decision)
+  })
+  return decisions
+}
+
+const getVisibleAuthoredDecisionUpvotes = async username => {
+  const querySnapshot = await db.collection('decisionVotes').where('author.username', '==', username).orderBy('createTime', 'desc').limit(10).get()
+  const authoredUpvotes = []
+  querySnapshot.forEach(doc => {
+    const vote = doc.data()
+    vote.id = doc.id
+    authoredUpvotes.push(vote)
   })
 }
 
-const getVisibleAuthoredDecisionUpvotes = username => {
-  return db.collection('decisionVotes').where('author.username', '==', username).orderBy('createTime', 'desc').limit(10).get()
-  .then(querySnapshot => {
-    const authoredUpvotes = []
-    querySnapshot.forEach(doc => {
-      const vote = doc.data()
-      vote.id = doc.id
-      authoredUpvotes.push(vote)
-    })
-    return authoredUpvotes
+const getNotificationsForUser = async username => {
+  const querySnapshot = await db.collection('notifications').where('recipientUsername', '==', username).orderBy('createTime').limit(10).get()
+  const notifications = []
+  querySnapshot.forEach(doc => {
+    const notification = doc.data()
+    notification.notificationId = doc.id
+    notifications.push(notification)
   })
+  return notifications
 }
 
-const getNotificationsForUser = username => {
-  return db.collection('notifications').where('recipientUsername', '==', username).orderBy('createTime').limit(10).get()
-  .then(querySnapshot => {
-    const notifications = []
-    querySnapshot.forEach(doc => {
-      const notification = doc.data()
-      notification.notificationId = doc.id
-      notifications.push(notification)
-    })
-    return notifications
-  })
-}
-
-const getDecisionsUserIsWatching = username => {
-  return db.collection('decisions').where('watchers', 'array-contains', username).get()
-  .then(querySnapshot => {
+const getDecisionsUserIsWatching = async username => {
+  const querySnapshot = await db.collection('decisions').where('watchers', 'array-contains', username).get()
     const watchedDecisions = []
     querySnapshot.forEach(doc => {
       const decision = doc.data()
@@ -174,7 +161,6 @@ const getDecisionsUserIsWatching = username => {
       watchedDecisions.push(decision)
     })
     return watchedDecisions
-  })
 }
 
 exports.getUser = async (req, res) => {
