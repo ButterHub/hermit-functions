@@ -1,19 +1,20 @@
 # Hermit
-A collaborative decision making tool. Frontend development begins/ began on 15th September 2019, see the [front-end react repository](https://github.com/ButterHub/hermit-react-mui) and publicly available at [https://not-available.yet](https://not-available.yet).
+A collaborative decision making tool. Frontend development begins/ began on the 16th September 2019, see the [front-end react repository](https://github.com/ButterHub/hermit-react-mui) and publicly available at [https://not-available.yet](https://not-available.yet).
 
 # hermit-functions
 Serverless functions for Hermit, hosted on firebase. 
 
 # Tasks
 1. Refactor
-2. Validation of request bodies
-3. Update models.json
-4. Get hermit-prod firebase environment setup
-5. Implement delete account, delete decision, delete comment, delete decisionComponent
-6. Implement recents functionality (list of recently accessed decisions)
-7. Referral link generator, to make hermit invite only (account creation, decision viewing) habitronic + Oauth -> web analytics)
-8. Add more functionality as frontend sees fit
-9. Complete all #TODO
+2. Use express [error middleware](https://expressjs.com/en/guide/error-handling.html) instead of try/ catch 
+3. Validation of request bodies
+4. Update models.json
+5. Get hermit-prod firebase environment setup
+6. Implement delete account, delete decision, delete comment, delete decisionComponent
+7. Implement recents functionality (list of recently accessed decisions)
+8. Referral link generator, to make hermit invite only (account creation, decision viewing) habitronic + Oauth -> web analytics)
+9. Add more functionality as frontend sees fit
+10. Complete all #TODO
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
