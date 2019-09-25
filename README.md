@@ -17,6 +17,7 @@ Serverless functions for Hermit, hosted on firebase.
 
 # Setup
 1. Get environment variables from services (firebase/ gcp, unsplash, etc) and put them in a new file `/functions/.env`, following the `/functions/.env.example` template.
+   1. For firebase, run `firebase login`, then `firebase apps:sdkconfig web`
 2. Set up 'service account' credentials for firebase on local machine, from [Google's Getting Started With Authentication Guide](https://cloud.google.com/docs/authentication/getting-started). 
 3. Public bucket permissions set at [GCP Console](https://console.cloud.google.com/storage). Add `allUsers` member with `Storage Object Viewer` role. **Note: This needs to be done for hermit-prod when it is provisioned. **
 
