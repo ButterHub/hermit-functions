@@ -29,3 +29,6 @@ Serverless functions for Hermit, hosted on firebase.
 # Future challenges
 1. Supporting decision comments: Renaming comments collection without losing data or uptime, when supporting decision comments alongside decision component comments
 2. Using FCM to alert users about `/notifications` documents
+
+# Q & A
+1. Why firebase, and not AWS Lambda or Azure Functions?
